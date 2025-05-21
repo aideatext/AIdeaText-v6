@@ -2,6 +2,7 @@ FROM python:3.10
 
 WORKDIR /app
 
+# Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
@@ -9,10 +10,26 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+# Crear directorios necesarios con permisos adecuados
+RUN mkdir -p /home/appuser/.streamlit && \
+    mkdir -p /home/appuser/.config/matplotlib && \
+    chmod -R 777 /home/appuser
+
+# Configurar variables de entorno
+ENV MPLCONFIGDIR=/home/appuser/.config/matplotlib
+ENV STREAMLIT_GLOBAL_DEVELOPMENT_MODE=false
+ENV STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+# Copiar archivos de la aplicación
 COPY requirements.txt ./
 COPY src/ ./src/
 
-RUN pip3 install -r requirements.txt
+# Instalar dependencias de Python
+RUN pip3 install --no-cache-dir -r requirements.txt
+
+# Establecer usuario no root
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 8501
 
