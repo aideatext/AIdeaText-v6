@@ -310,20 +310,20 @@ def display_videos_and_info(lang_code, landing_t):
             # Columna izquierda: Foto 1 grande
             with col_left:
                 # Foto 2 arriba
-                st.image("assets/img/socialmedia/_MG_2845.JPG", 
+                st.image("src/assets/img/socialmedia/_MG_2845.JPG", 
                         caption="MakerFaire CDMX 2024", 
                         width=480)  # Ajusta este valor según necesites
                         # use_column_width=True)
                 
                 # Foto 3 abajo
-                st.image("assets/img/socialmedia/Facebook_CoverPhoto-1_820x312.jpg", 
+                st.image("src/assets/img/socialmedia/Facebook_CoverPhoto-1_820x312.jpg", 
                         caption="MakerFaire CDMX 2024", 
                         width=480)  # Ajusta este valor según necesites 
                         # use_column_width=True)
 
                             # Columna derecha: Fotos 2 y 3 una encima de otra
             with col_right:
-                st.image("assets/img/socialmedia/_MG_2790.jpg", 
+                st.image("src/assets/img/socialmedia/_MG_2790.jpg", 
                         caption="MakerFaire CDMX 2024", 
                         width=540)  # Ajusta este valor según necesites
 
