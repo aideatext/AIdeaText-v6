@@ -9,7 +9,7 @@ from itertools import combinations
 import numpy as np
 import matplotlib.patches as patches
 import logging
-
+import os
 
 # 2. Configuración básica del logging
 logging.basicConfig(
