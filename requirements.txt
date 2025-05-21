@@ -1,0 +1,59 @@
+anthropic
+azure-identity
+azure-cosmos
+antiword
+bcrypt
+certifi
+cairosvg
+python-dotenv
+drawSvg
+docx2txt
+
+# Modelos de spaCy desde Hugging Face
+# https://huggingface.co/spacy/es_core_news_lg/resolve/main/es_core_news_lg-any-py3-none-any.whl
+# https://huggingface.co/spacy/en_core_web_lg/resolve/main/en_core_web_lg-any-py3-none-any.whl
+# https://huggingface.co/spacy/fr_core_news_lg/resolve/main/fr_core_news_lg-any-py3-none-any.whl
+
+# Enlaces alternativos desde GitHub (comentados)
+es-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl
+en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+fr-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.8.0/fr_core_news_lg-3.8.0-py3-none-any.whl
+pt-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_lg-3.8.0/pt_core_news_lg-3.8.0-py3-none-any.whl
+
+numpy
+networkx
+matplotlib
+odfpy
+plotly
+pydantic
+python-dateutil
+pandas
+python-docx
+#pywin32
+pymssql
+python-dotenv
+pymongo
+PyPDF2
+rlPyCairo
+requests
+reportlab
+#spacy>=3.7.0,<3.8.0
+#spacy=3.8.0
+#spacy
+spacy-streamlit
+seaborn
+squarify
+streamlit
+streamlit-float
+streamlit-player
+streamlit-chat
+streamlit-antd-components
+streamlit-option-menu
+scipy
+sentencepiece
+scikit-learn
+svglib
+transformers
+torch
+tqdm
+thinc
