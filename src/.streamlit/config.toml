@@ -2,7 +2,7 @@
 port = 8501
 address = "0.0.0.0"
 maxUploadSize = 5  # Tamaño máximo en MB
-enableCORS = true
+enableCORS = false
 enableXsrfProtection = false
 
 [browser]
