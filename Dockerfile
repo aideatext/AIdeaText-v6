@@ -2,6 +2,9 @@ FROM python:3.10
 
 WORKDIR /app
 
+ENV TORCH_IGNORE_DISABLED_CUDA_WARNINGS=1
+ENV STREAMLIT_SERVER_ENABLE_WEBKIT_DEPRECATION=0
+
 # Instalar dependencias del sistema
 RUN apt-get update && apt-get install -y \
     build-essential \
