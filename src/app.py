@@ -7,6 +7,8 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime
 from PIL import Image
+import threading
+import torch
 
 # Configuración básica
 load_dotenv()
@@ -106,6 +108,14 @@ from modules.admin.admin_ui import admin_page
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def torch_operations():
+    print(torch.__version__)
+    print(torch.cuda.is_available())
+
+if __name__ == '__main__':
+    torch_thread = threading.Thread(target=torch_operations)
+    torch_thread.start()
 
 @st.cache_resource(show_spinner=False)
 def initialize_nlp_models():
