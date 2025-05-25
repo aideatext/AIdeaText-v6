@@ -1,14 +1,17 @@
 # AIdeaText v3
 # app.py
-import logging
+import os
+import torch
+torch.classes.__path__ = [os.path.join(torch.__path__[0], torch.classes.__file__)] 
+
 import streamlit as st
 import sys
-import os
+
 from dotenv import load_dotenv
 from datetime import datetime
 from PIL import Image
 import threading
-import torch
+import logging
 
 # Configuración básica
 load_dotenv()
