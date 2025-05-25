@@ -1,16 +1,20 @@
 # AIdeaText v3
 # app.py
 import os
-import torch
-torch.classes.__path__ = [os.path.join(torch.__path__[0], torch.classes.__file__)] 
+os.environ['TORCH_DISABLE_MLC'] = '1'  # Desactiva la carga de componentes conflictivos
 
 import streamlit as st
+from streamlit.runtime.scriptrunner import RerunException
+
+import torch
+import threading
+
 import sys
 
 from dotenv import load_dotenv
 from datetime import datetime
 from PIL import Image
-import threading
+
 import logging
 
 # Configuración básica
@@ -112,20 +116,26 @@ from modules.admin.admin_ui import admin_page
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def torch_operations():
-    print(torch.__version__)
-    print(torch.cuda.is_available())
-
-if __name__ == '__main__':
-    torch_thread = threading.Thread(target=torch_operations)
-    torch_thread.start()
-
 @st.cache_resource(show_spinner=False)
 def initialize_nlp_models():
     logger.info("Cargando modelos de spaCy")
     models = load_spacy_models()
     logger.info("Modelos de spaCy cargados exitosamente")
     return models
+
+# Solución para el error de torch.classes
+def _patched_get_module_paths(module):
+    if 'torch' in str(module.__file__):
+        return []
+    return original_get_module_paths(module)
+
+# Aplicar el parche solo si es necesario
+try:
+    from streamlit.watcher.local_sources_watcher import get_module_paths as original_get_module_paths
+    import streamlit.watcher.local_sources_watcher
+    streamlit.watcher.local_sources_watcher.get_module_paths = _patched_get_module_paths
+except ImportError:
+    pass
 
 def app_main():
     try:
