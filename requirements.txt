@@ -43,7 +43,7 @@ reportlab
 spacy-streamlit
 seaborn
 squarify
-streamlit=1.45.1
+streamlit==1.45.1
 streamlit-float
 streamlit-player
 streamlit-chat
