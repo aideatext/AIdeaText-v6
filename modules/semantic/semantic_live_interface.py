@@ -1,0 +1,197 @@
+# modules/semantic/semantic_live_interface.py
+import streamlit as st
+from streamlit_float import *
+from streamlit_antd_components import *
+import pandas as pd
+import logging
+
+# Configuración del logger
+logger = logging.getLogger(__name__)
+
+# Importaciones locales
+from .semantic_process import (
+    process_semantic_input,
+    format_semantic_results
+)
+
+from ..utils.widget_utils import generate_unique_key
+from ..database.semantic_mongo_db import store_student_semantic_result
+from ..database.chat_mongo_db import store_chat_history, get_chat_history
+
+def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
+    """
+    Interfaz para el análisis semántico en vivo con proporciones de columna ajustadas
+    """
+    try:
+        # 1. Inicializar el estado de la sesión de manera más robusta
+        if 'semantic_live_state' not in st.session_state:
+            st.session_state.semantic_live_state = {
+                'analysis_count': 0,
+                'current_text': '',
+                'last_result': None,
+                'text_changed': False
+            }
+
+        # 2. Función para manejar cambios en el texto
+        def on_text_change():
+            current_text = st.session_state.semantic_live_text
+            st.session_state.semantic_live_state['current_text'] = current_text
+            st.session_state.semantic_live_state['text_changed'] = True
+
+        # 3. Crear columnas con nueva proporción (1:3)
+        input_col, result_col = st.columns([1, 3])
+
+        # Columna izquierda: Entrada de texto
+        with input_col:
+            st.subheader(semantic_t.get('enter_text', 'Ingrese su texto'))
+            
+            # Área de texto con manejo de eventos
+            text_input = st.text_area(
+                semantic_t.get('text_input_label', 'Escriba o pegue su texto aquí'),
+                height=500,
+                key="semantic_live_text",
+                value=st.session_state.semantic_live_state.get('current_text', ''),
+                on_change=on_text_change,
+                label_visibility="collapsed"  # Oculta el label para mayor estabilidad
+            )
+
+            # Botón de análisis y procesamiento
+            analyze_button = st.button(
+                semantic_t.get('analyze_button', 'Analizar'),
+                key="semantic_live_analyze",
+                type="primary",
+                icon="🔍",
+                disabled=not text_input,
+                use_container_width=True
+            )
+
+            if analyze_button and text_input:
+                try:
+                    with st.spinner(semantic_t.get('processing', 'Procesando...')):
+                        analysis_result = process_semantic_input(
+                            text_input,
+                            lang_code,
+                            nlp_models,
+                            semantic_t
+                        )
+
+                        if analysis_result['success']:
+                            st.session_state.semantic_live_state['last_result'] = analysis_result
+                            st.session_state.semantic_live_state['analysis_count'] += 1
+                            st.session_state.semantic_live_state['text_changed'] = False
+                            
+                            store_student_semantic_result(
+                                st.session_state.username,
+                                text_input,
+                                analysis_result['analysis']
+                            )
+                        else:
+                            st.error(analysis_result.get('message', 'Error en el análisis'))
+
+                except Exception as e:
+                    logger.error(f"Error en análisis: {str(e)}")
+                    st.error(semantic_t.get('error_processing', 'Error al procesar el texto'))
+
+        # Columna derecha: Visualización de resultados
+        with result_col:
+            st.subheader(semantic_t.get('live_results', 'Resultados en vivo'))
+
+            if 'last_result' in st.session_state.semantic_live_state and \
+               st.session_state.semantic_live_state['last_result'] is not None:
+                
+                analysis = st.session_state.semantic_live_state['last_result']['analysis']
+
+                if 'key_concepts' in analysis and analysis['key_concepts'] and \
+                   'concept_graph' in analysis and analysis['concept_graph'] is not None:
+                    
+                    st.markdown("""
+                        <style>
+                        .unified-container {
+                            background-color: white;
+                            border-radius: 10px;
+                            overflow: hidden;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            width: 100%;
+                            margin-bottom: 1rem;
+                        }
+                        .concept-table {
+                            display: flex;
+                            flex-wrap: nowrap;  /* Evita el wrap */
+                            gap: 6px;           /* Reducido el gap */
+                            padding: 10px;
+                            background-color: #f8f9fa;
+                            overflow-x: auto;    /* Permite scroll horizontal si es necesario */
+                            white-space: nowrap; /* Mantiene todo en una línea */
+                        }
+                        .concept-item {
+                            background-color: white;
+                            border-radius: 4px;
+                            padding: 4px 8px;    /* Padding reducido */
+                            display: inline-flex; /* Cambiado a inline-flex */
+                            align-items: center;
+                            gap: 4px;            /* Gap reducido */
+                            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                            flex-shrink: 0;      /* Evita que los items se encojan */
+                        }
+                        .concept-name { 
+                            font-weight: 500; 
+                            color: #1f2937;
+                            font-size: 0.8em;    /* Tamaño de fuente reducido */
+                        }
+                        .concept-freq { 
+                            color: #6b7280; 
+                            font-size: 0.75em;   /* Tamaño de fuente reducido */
+                        }
+                        .graph-section { 
+                            padding: 20px;
+                            background-color: white;
+                        }
+                        </style>
+                    """, unsafe_allow_html=True)
+
+                    with st.container():
+                        # Conceptos en una sola línea
+                        concepts_html = """
+                        <div class="unified-container">
+                            <div class="concept-table">
+                        """
+                        concepts_html += ''.join(
+                            f'<div class="concept-item"><span class="concept-name">{concept}</span>'
+                            f'<span class="concept-freq">({freq:.2f})</span></div>'
+                            for concept, freq in analysis['key_concepts']
+                        )
+                        concepts_html += "</div></div>"
+                        st.markdown(concepts_html, unsafe_allow_html=True)
+                        
+                        # Grafo
+                        if 'concept_graph' in analysis and analysis['concept_graph'] is not None:
+                            st.image(
+                                analysis['concept_graph'],
+                                use_container_width=True
+                            )
+
+                        # Botones y controles
+                        button_col, spacer_col = st.columns([1,5])
+                        with button_col:
+                            st.download_button(
+                                label="📥 " + semantic_t.get('download_graph', "Download"),
+                                data=analysis['concept_graph'],
+                                file_name="semantic_live_graph.png",
+                                mime="image/png",
+                                use_container_width=True
+                            )
+                        
+                        with st.expander("📊 " + semantic_t.get('graph_help', "Graph Interpretation")):
+                            st.markdown("""
+                                - 🔀 Las flechas indican la dirección de la relación entre conceptos
+                                - 🎨 Los colores más intensos indican conceptos más centrales en el texto
+                                - ⭕ El tamaño de los nodos representa la frecuencia del concepto
+                                - ↔️ El grosor de las líneas indica la fuerza de la conexión
+                            """)
+                else:
+                    st.info(semantic_t.get('no_graph', 'No hay datos para mostrar'))
+
+    except Exception as e:
+        logger.error(f"Error general en interfaz semántica en vivo: {str(e)}")
+        st.error(semantic_t.get('general_error', "Se produjo un error. Por favor, intente de nuevo."))
+
