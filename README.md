@@ -10,4 +10,5 @@ tags:
 pinned: true
 short_description: AIdeaText
 license: mit
+sdk_version: 1.45.1
 ---
