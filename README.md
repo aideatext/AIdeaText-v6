@@ -1,13 +1,13 @@
 ---
-title: AIdeaText-v5Dev
-emoji: 👀
-colorFrom: blue
-colorTo: purple
+title: V5Dev
+emoji: 🚀
+colorFrom: red
+colorTo: red
 sdk: streamlit
-sdk_version: 1.45.1
-app_file: app.py
+app_port: 8501
+tags:
+- streamlit
 pinned: true
-license: mit
 short_description: AIdeaText
-thumbnail: >-
-  https://cdn-uploads.huggingface.co/production/uploads/650f8981f141bc34f92d7bea/b6wrlUCEhhlFOQ5mJ6FtA.png
+license: mit
+---
