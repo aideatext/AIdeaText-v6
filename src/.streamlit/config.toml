@@ -1,9 +1,0 @@
-[server]
-port = 8501
-address = "0.0.0.0"
-maxUploadSize = 5  # Tamaño máximo en MB
-enableCORS = false
-enableXsrfProtection = false
-
-[browser]
-gatherUsageStats = false
