@@ -30,12 +30,6 @@ from modules.utils.spacy_utils import load_spacy_models
 from modules.utils.widget_utils import generate_unique_key
 
 # Importaciones de interfaces
-from modules.morphosyntax.morphosyntax_interface import (
-    display_morphosyntax_interface,
-    display_arc_diagram
-    #display_morphosyntax_results
-)
-
 from modules.semantic.semantic_interface import (
     display_semantic_interface, 
     display_semantic_results
@@ -77,14 +71,15 @@ from modules.database.mongo_db import (
     delete_document
 )
 
-from modules.database.morphosintax_mongo_db import (
-    store_student_morphosyntax_result,
-    get_student_morphosyntax_analysis
-)
-
+###########SEMANTIC
 from modules.database.semantic_mongo_db import (
     store_student_semantic_result,
     get_student_semantic_analysis
+)
+
+from modules.database.discourse_mongo_db import (
+    store_student_discourse_result,
+    get_student_discourse_analysis
 )
 
 from modules.database.chat_mongo_db import ( 
