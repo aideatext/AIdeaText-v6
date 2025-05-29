@@ -55,22 +55,10 @@ from ..database.mongo_db import (
     delete_document
 )
 
-from ..database.morphosintax_mongo_db import (
-    store_student_morphosyntax_result,
-    get_student_morphosyntax_analysis,
-    update_student_morphosyntax_analysis,
-    delete_student_morphosyntax_analysis,
-    get_student_morphosyntax_data
-)
 
 from ..database.chat_mongo_db import store_chat_history, get_chat_history
 
 ##Importaciones desde los análisis #######
-from ..morphosyntax.morphosyntax_interface import (
-    display_morphosyntax_interface, 
-    display_arc_diagram
-)
-
 from ..semantic.semantic_interface import (
     display_semantic_interface, 
     display_semantic_results
@@ -94,10 +82,6 @@ def user_page(lang_code, t):
     # Inicializar el tab seleccionado si no existe
     if 'selected_tab' not in st.session_state:
         st.session_state.selected_tab = 0
-
-    # Inicializar el estado del análisis en vivo
-    if 'semantic_live_active' not in st.session_state:
-        st.session_state.semantic_live_active = False
 
     # Manejar la carga inicial de datos del usuario
     if 'user_data' not in st.session_state:
@@ -168,8 +152,6 @@ def user_page(lang_code, t):
     # Inicializar estados para todos los tabs
     if 'tab_states' not in st.session_state:
         st.session_state.tab_states = {
-            'current_situation_active': False,
-            'morpho_active': False,
             #'semantic_live_active': False,
             'semantic_active': False,
             #'discourse_live_active': False,
@@ -180,11 +162,7 @@ def user_page(lang_code, t):
     
     # Sistema de tabs
     tab_names = [
-        t.get('current_situation_tab', "Mi Situación Actual"),
-        t.get('morpho_tab', 'Análisis Morfosintáctico'),
-        #t.get('semantic_live_tab', 'Análisis Semántico Vivo'),
         t.get('semantic_tab', 'Análisis Semántico'),
-        #t.get('discourse_live_tab', 'Análisis de Discurso Vivo'),
         t.get('discourse_tab', 'Análisis comparado de textos'),
         t.get('activities_tab', 'Registro de mis actividades'),
         t.get('feedback_tab', 'Formulario de Comentarios')
@@ -206,47 +184,15 @@ def user_page(lang_code, t):
                     if can_switch:
                         st.session_state.selected_tab = index
 
-                if index == 0:  # Situación actual
-                    st.session_state.tab_states['current_situation_active'] = True
-                    display_current_situation_interface(
-                        st.session_state.lang_code,
-                        st.session_state.nlp_models,
-                        t  # Pasamos todo el diccionario de traducciones
-                    )
-
-                elif index == 1:  # Morfosintáctico
-                    st.session_state.tab_states['morpho_active'] = True
-                    display_morphosyntax_interface(
-                        st.session_state.lang_code,
-                        st.session_state.nlp_models,
-                        t  # Pasamos todo el diccionario de traducciones
-                    )
-
-                #elif index == 2:  # Semántico Vivo
-                #    st.session_state.tab_states['semantic_live_active'] = True
-                #    display_semantic_live_interface(
-                #        st.session_state.lang_code,
-                #        st.session_state.nlp_models,
-                #        t  # Pasamos todo el diccionario de traducciones
-                #    )
-
-                elif index == 2:  # Semántico
+                if index == 0:  # Semántico
                     st.session_state.tab_states['semantic_active'] = True
                     display_semantic_interface(
                         st.session_state.lang_code,
                         st.session_state.nlp_models,
                         t  # Pasamos todo el diccionario de traducciones
                     )
-
-                #elif index == 4:  # Discurso Vivo
-                #    st.session_state.tab_states['discourse_live_active'] = True
-                #    display_discourse_live_interface(
-                #        st.session_state.lang_code,
-                #        st.session_state.nlp_models,
-                #        t  # Pasamos todo el diccionario de traducciones
-                #    )
                 
-                elif index == 3:  # Discurso
+                elif index == 1:  # Discurso
                     st.session_state.tab_states['discourse_active'] = True
                     display_discourse_interface(
                         st.session_state.lang_code,
@@ -254,7 +200,7 @@ def user_page(lang_code, t):
                         t  # Pasamos todo el diccionario de traducciones
                     )
 
-                elif index == 4:  # Actividades
+                elif index == 2:  # Actividades
                     st.session_state.tab_states['activities_active'] = True
                     display_student_activities(
                         username=st.session_state.username,
@@ -262,7 +208,7 @@ def user_page(lang_code, t):
                         t=t  # Pasamos todo el diccionario de traducciones
                     )
 
-                elif index == 5:  # Feedback
+                elif index == 3:  # Feedback
                     st.session_state.tab_states['feedback_active'] = True
                     display_feedback_form(
                         st.session_state.lang_code,
@@ -292,28 +238,20 @@ def user_page(lang_code, t):
 def get_tab_index(state_key):
     """Obtiene el índice del tab basado en la clave de estado"""
     index_map = {
-        'current_situation_active': 0,
-        'morpho_active': 1,
-        #'semantic_live_active': 2,
-        'semantic_active': 2,
-        #'discourse_live_active': 4,
-        'discourse_active': 3,
-        'activities_active': 4,
-        'feedback_active': 5
+        'semantic_active': 0,
+        'discourse_active': 1,
+        'activities_active': 2,
+        'feedback_active': 3
     }
     return index_map.get(state_key, -1)
 
 def get_state_key_for_index(index):
     """Obtiene la clave de estado basada en el índice del tab"""
     state_map = {
-        0: 'current_situation_active',
-        1: 'morpho_active',
-        #2: 'semantic_live_active',
-        2: 'semantic_active',
-        #4: 'discourse_live_active',
-        3: 'discourse_active',
-        4: 'activities_active',
-        5: 'feedback_active'
+        0: 'semantic_active',
+        1: 'discourse_active',
+        2: 'activities_active',
+        3: 'feedback_active'
     }
     return state_map.get(index)
 
