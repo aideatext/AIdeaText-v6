@@ -11,8 +11,8 @@ def initialize_session_state():
         st.session_state.lang_code = 'es'
 
         # Inicializar la estructura para el chat morfosintáctico
-        st.session_state.morphosyntax_chat_history = []
-        st.session_state.morphosyntax_chat_input = ""
+        # st.session_state.morphosyntax_chat_history = []
+        # st.session_state.morphosyntax_chat_input = ""
 
 def logout():
     for key in list(st.session_state.keys()):
