@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 # Importaciones locales
 try:
-    from ..database.morphosintax_mongo_db import get_student_morphosyntax_data
     from ..database.semantic_mongo_db import get_student_semantic_data
     from ..database.discourse_mongo_db import get_student_discourse_data
     
@@ -31,6 +30,8 @@ try:
 except ImportError as e:
     logger.error(f"Error en las importaciones locales: {e}")
 
+
+####################################################################
 def display_student_progress(username, lang_code, t):
     logger.debug(f"Iniciando display_student_progress para {username}")
 
