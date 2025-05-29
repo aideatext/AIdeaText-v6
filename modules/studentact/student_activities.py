@@ -38,7 +38,7 @@ def display_student_progress(username, lang_code, t):
     st.title(f"{t.get('progress_of', 'Progreso de')} {username}")
 
     # Obtener los datos del estudiante
-    student_data = get_student_morphosyntax_data(username)
+    student_data = get_student_semantic_data(username)
 
     if not student_data or len(student_data.get('entries', [])) == 0:
         logger.warning(f"No se encontraron datos para el estudiante {username}")
@@ -74,10 +74,10 @@ def display_student_progress(username, lang_code, t):
         two_days_ago = datetime.now(pytz.utc) - timedelta(days=2)
 
         try:
-            morphosyntax_analyses = get_student_morphosyntax_data(username)
-            recent_morphosyntax = [a for a in morphosyntax_analyses if datetime.fromisoformat(a['timestamp']) > two_days_ago]
+            semantic_analyses = get_student_semantic_data(username)
+            recent_semantic = [a for a in semantic_analyses if datetime.fromisoformat(a['timestamp']) > two_days_ago]
 
-            content += f"Análisis morfosintácticos: {len(recent_morphosyntax)}\n"
+            content += f"Análisis semántico: {len(recent_morphosyntax)}\n"
             for analysis in recent_morphosyntax:
                 content += f"- Análisis del {analysis['timestamp']}: {analysis['text'][:50]}...\n"
 
