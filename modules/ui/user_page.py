@@ -55,6 +55,15 @@ from ..database.mongo_db import (
     delete_document
 )
 
+from ..database.semantic_mongo_db import (
+    store_student_semantic_result,
+    get_student_semantic_analysis,
+    update_student_semantic_analysis,
+    delete_student_semantic_analysis,
+    get_student_semantic_data
+)
+
+
 
 from ..database.chat_mongo_db import store_chat_history, get_chat_history
 
@@ -82,7 +91,7 @@ def user_page(lang_code, t):
     if 'user_data' not in st.session_state:
         with st.spinner(t.get('loading_data', "Cargando tus datos...")):
             try:
-                st.session_state.user_data = get_student_data(st.session_state.username)
+                st.session_state.user_data = get_student_semantic_data(st.session_state.username)
                 st.session_state.last_data_fetch = datetime.now(timezone.utc).isoformat()
             except Exception as e:
                 logger.error(f"Error al obtener datos del usuario: {str(e)}")
