@@ -89,7 +89,7 @@ from modules.database.chat_mongo_db import (
 
 # Importaciones de base de datos
 from modules.studentact.student_activities_v2 import display_student_activities
-from modules.studentact.current_situation_interface import display_current_situation_interface
+# from modules.studentact.current_situation_interface import display_current_situation_interface
 
 from modules.auth.auth import (
     authenticate_student,
@@ -129,14 +129,14 @@ def app_main():
             logger.info("Modelos NLP inicializados y almacenados en la sesión")
 
         # Inicializar estados de análisis si no existen
-        if 'morphosyntax_state' not in st.session_state:
-            st.session_state.morphosyntax_state = {
+        if 'semantic_state' not in st.session_state:
+            st.session_state.semantic_state = {
                 'last_analysis': None,
                 'analysis_count': 0
             }
             
-        if 'semantic_state' not in st.session_state:
-            st.session_state.semantic_state = {
+        if 'discourse_state' not in st.session_state:
+            st.session_state.discourse_state = {
                 'last_analysis': None,
                 'analysis_count': 0
             }
