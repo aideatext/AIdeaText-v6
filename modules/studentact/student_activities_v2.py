@@ -46,31 +46,31 @@ def display_student_activities(username: str, lang_code: str, t: dict):
         # Tabs para diferentes tipos de análisis
         # Cambiado "Análisis del Discurso" a "Análisis comparado de textos"
         tabs = st.tabs([
-            t.get('current_situation_activities', 'Registros de la función: Mi Situación Actual'),
-            t.get('morpho_activities', 'Registros de mis análisis morfosintácticos'),
+            #t.get('current_situation_activities', 'Registros de la función: Mi Situación Actual'),
+            #t.get('morpho_activities', 'Registros de mis análisis morfosintácticos'),
             t.get('semantic_activities', 'Registros de mis análisis semánticos'),
             t.get('discourse_activities', 'Registros de mis análisis comparado de textos'),
             t.get('chat_activities', 'Registros de mis conversaciones con el tutor virtual')
         ])
 
         # Tab de Situación Actual
-        with tabs[0]:
-            display_current_situation_activities(username, t)
+        #with tabs[0]:
+        #    display_current_situation_activities(username, t)
         
         # Tab de Análisis Morfosintáctico
-        with tabs[1]:
-            display_morphosyntax_activities(username, t)
+        #with tabs[1]:
+        #    display_morphosyntax_activities(username, t)
 
         # Tab de Análisis Semántico
-        with tabs[2]:
+        with tabs[0]:
             display_semantic_activities(username, t)
 
         # Tab de Análisis del Discurso (mantiene nombre interno pero UI muestra "Análisis comparado de textos")
-        with tabs[3]:
+        with tabs[1]:
             display_discourse_activities(username, t)
             
         # Tab de Conversaciones del Chat
-        with tabs[4]:
+        with tabs[2]:
             display_chat_activities(username, t)
 
     except Exception as e:
