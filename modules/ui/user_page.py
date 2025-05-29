@@ -91,12 +91,36 @@ def user_page(lang_code, t):
     if 'user_data' not in st.session_state:
         with st.spinner(t.get('loading_data', "Cargando tus datos...")):
             try:
-                st.session_state.user_data = get_student_semantic_data(st.session_state.username)
+                # Obtener datos semánticos
+                semantic_data = get_student_semantic_data(st.session_state.username)
+                
+                # Verificar si la operación fue exitosa
+                if semantic_data.get('status') == 'error':
+                    raise Exception(semantic_data.get('error', 'Error desconocido al obtener datos'))
+                
+                # Almacenar datos en session_state
+                st.session_state.user_data = {
+                    'semantic_analyses': semantic_data.get('entries', []),
+                    'analysis_count': semantic_data.get('count', 0),
+                    'last_analysis': semantic_data['entries'][0] if semantic_data['entries'] else None,
+                    'username': st.session_state.username,
+                    'loaded_at': datetime.now(timezone.utc).isoformat()
+                }
+                
                 st.session_state.last_data_fetch = datetime.now(timezone.utc).isoformat()
+                
             except Exception as e:
                 logger.error(f"Error al obtener datos del usuario: {str(e)}")
-                st.error(t.get('data_load_error', "Hubo un problema al cargar tus datos. Por favor, intenta recargar la página."))
-                return
+                # Crear estructura vacía para evitar errores
+                st.session_state.user_data = {
+                    'semantic_analyses': [],
+                    'analysis_count': 0,
+                    'last_analysis': None,
+                    'username': st.session_state.username,
+                    'error': str(e)
+                }
+                st.error(t.get('data_load_error', "Hubo un problema al cargar tus datos. Algunas funciones pueden estar limitadas."))
+                # No hacer return aquí para permitir que la aplicación continúe
 
     logger.info(f"Idioma actual: {st.session_state.lang_code}")
     logger.info(f"Modelos NLP cargados: {'nlp_models' in st.session_state}")
