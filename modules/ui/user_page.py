@@ -82,7 +82,7 @@ def user_page(lang_code, t):
     if 'user_data' not in st.session_state:
         with st.spinner(t.get('loading_data', "Cargando tus datos...")):
             try:
-                st.session_state.user_data = get_student_semantic_data(st.session_state.username)
+                st.session_state.user_data = get_student_data(st.session_state.username)
                 st.session_state.last_data_fetch = datetime.now(timezone.utc).isoformat()
             except Exception as e:
                 logger.error(f"Error al obtener datos del usuario: {str(e)}")
@@ -147,9 +147,7 @@ def user_page(lang_code, t):
     # Inicializar estados para todos los tabs
     if 'tab_states' not in st.session_state:
         st.session_state.tab_states = {
-            #'semantic_live_active': False,
             'semantic_active': False,
-            #'discourse_live_active': False,
             'discourse_active': False,
             'activities_active': False,
             'feedback_active': False
