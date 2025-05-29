@@ -84,32 +84,31 @@ def get_student_semantic_analysis(username, limit=10):
     Recupera los análisis semánticos de un estudiante.
     """
     try:
-        # Obtener la colección
         collection = get_collection(COLLECTION_NAME)
-        if collection is None:  # Cambiado de if not collection a if collection is None
+        if collection is None:
             logger.error("No se pudo obtener la colección semantic")
             return []
 
-        # Consulta
         query = {
             "username": username,
             "analysis_type": "semantic"
         }
         
-        # Campos a recuperar
+        # Actualizar la proyección para incluir todos los campos necesarios
         projection = {
             "timestamp": 1,
+            "text": 1,  # Añadir este campo
+            "key_concepts": 1,  # Añadir este campo
+            "entities": 1,  # Añadir este campo
             "concept_graph": 1,
             "_id": 1
         }
         
-        # Ejecutar consulta
         try:
             cursor = collection.find(query, projection).sort("timestamp", -1)
             if limit:
                 cursor = cursor.limit(limit)
             
-            # Convertir cursor a lista
             results = list(cursor)
             logger.info(f"Recuperados {len(results)} análisis semánticos para {username}")
             return results
@@ -144,6 +143,8 @@ def delete_student_semantic_analysis(analysis_id):
     query = {"_id": analysis_id}
     return delete_document(COLLECTION_NAME, query)
 
+
+############################################################################
 def get_student_semantic_data(username):
     """
     Obtiene todos los análisis semánticos de un estudiante.
@@ -152,23 +153,40 @@ def get_student_semantic_data(username):
     Returns:
         dict: Diccionario con todos los análisis del estudiante
     """
-    analyses = get_student_semantic_analysis(username, limit=None)
-    
-    formatted_analyses = []
-    for analysis in analyses:
-        formatted_analysis = {
-            'timestamp': analysis['timestamp'],
-            'text': analysis['text'],
-            'key_concepts': analysis['key_concepts'],
-            'entities': analysis['entities']
-            # No incluimos los gráficos en el resumen general
+    try:
+        analyses = get_student_semantic_analysis(username, limit=None)
+        
+        formatted_analyses = []
+        for analysis in analyses:
+            # Asegurarse de que los campos existan antes de acceder a ellos
+            formatted_analysis = {
+                'timestamp': analysis.get('timestamp'),
+                'text': analysis.get('text', ''),  # Usar get() con valor por defecto
+                'key_concepts': analysis.get('key_concepts', []),
+                'entities': analysis.get('entities', []),
+                'concept_graph': analysis.get('concept_graph')  # Mantener el gráfico
+            }
+            formatted_analyses.append(formatted_analysis)
+        
+        return {
+            'username': username,
+            'entries': formatted_analyses,
+            'count': len(formatted_analyses),
+            'status': 'success'
         }
-        formatted_analyses.append(formatted_analysis)
     
-    return {
-        'entries': formatted_analyses
-    }
+    except Exception as e:
+        logger.error(f"Error al obtener datos semánticos para {username}: {str(e)}")
+        return {
+            'username': username,
+            'entries': [],
+            'count': 0,
+            'status': 'error',
+            'error': str(e)
+        }
 
+
+##########################################################################
 # Exportar las funciones necesarias
 __all__ = [
     'store_student_semantic_result',
