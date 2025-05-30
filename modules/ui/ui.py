@@ -59,19 +59,9 @@ st.markdown("""
 # Datos del carrusel (imágenes y descripciones)
 eventos = [
     {
-        "imagen": "assets/img/socialmedia/_MG_2845.JPG",
-        "titulo": "MakerFaire CDMX 2024",
-        "descripcion": "Nuestro stand en el evento MakerFaire"
-    },
-    {
-        "imagen": "assets/img/socialmedia/_MG_2790.jpg",
-        "titulo": "Conferencia Principal",
-        "descripcion": "Presentando AIdeaText a la comunidad"
-    },
-    {
-        "imagen": "assets/img/socialmedia/Facebook_CoverPhoto-1_820x312.jpg",
-        "titulo": "Taller Interactivo",
-        "descripcion": "Participantes usando la plataforma"
+        "imagen": "assets/img/socialmedia/WebSummit ShowCase 2025.png",
+        "titulo": "WebSummitRio 2025, Brasil, april, 27-30",
+        "descripcion": "AIdeaText showcase"
     }
 ]
 
@@ -97,8 +87,8 @@ def show_carousel():
         current_idx = st.session_state.current_event
         
         with st.container():
-            st.markdown("<h2 style='text-align: center; margin-bottom: 30px;'>Eventos Relevantes</h2>", 
-                       unsafe_allow_html=True)
+            #st.markdown("<h2 style='text-align: center; margin-bottom: 30px;'>Eventos Relevantes</h2>", 
+            #           unsafe_allow_html=True)
             
             # Controles de navegación
             col1, col2, col3 = st.columns([1, 6, 1])
