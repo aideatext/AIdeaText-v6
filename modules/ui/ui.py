@@ -75,17 +75,50 @@ eventos = [
     }
 ]
 
-# Inicializar estado del carrusel
-if 'current_event' not in st.session_state:
-    st.session_state.current_event = 0
+# Inicialización robusta del session state
+def initialize_session_state():
+    if 'current_event' not in st.session_state:
+        st.session_state.current_event = 0
 
-# Función para navegación
+# Función para navegación con verificación de estado
 def update_event(delta):
+    initialize_session_state()  # Asegurar que el estado existe
     st.session_state.current_event = (st.session_state.current_event + delta) % len(eventos)
 
-
-
-
+# Contenedor del carrusel
+def show_carousel():
+    initialize_session_state()  # Inicializar al mostrar el carrusel
+    
+    with st.container():
+        st.markdown("<h2 style='text-align: center;'>Eventos Relevantes</h2>", unsafe_allow_html=True)
+        
+        with st.container():
+            col1, col2, col3 = st.columns([1, 6, 1])
+            
+            with col1:
+                st.button("◀", on_click=update_event, args=(-1,), key="prev_btn")
+            
+            with col2:
+                # Mostrar imagen actual
+                event = eventos[st.session_state.current_event]
+                st.image(
+                    event["imagen"],
+                    use_column_width=True,
+                    caption=f"{event['titulo']} - {event['descripcion']}"
+                )
+            
+            with col3:
+                st.button("▶", on_click=update_event, args=(1,), key="next_btn")
+        
+        # Indicadores de posición (puntos)
+        st.markdown("<div class='carousel-nav'>", unsafe_allow_html=True)
+        for i in range(len(eventos)):
+            dot_class = "active" if i == st.session_state.current_event else ""
+            st.markdown(
+                f"<span class='carousel-dot {dot_class}' onclick='st.session_state.current_event = {i}; st.rerun()'></span>",
+                unsafe_allow_html=True
+            )
+        st.markdown("</div>", unsafe_allow_html=True)
 
 #########################################################
 
@@ -388,37 +421,7 @@ def display_videos_and_info(lang_code, landing_t):
     
     # Tab de Galería
     with tab_gallery:
-        # Contenedor con ancho máximo
-        with st.container():
-            st.markdown("<h2 style='text-align: center;'>Eventos Relevantes</h2>", unsafe_allow_html=True)
-            
-            with st.container():
-                col1, col2, col3 = st.columns([1, 6, 1])
-                
-                with col1:
-                    st.button("◀", on_click=update_event, args=(-1,), key="prev_btn")
-                
-                with col2:
-                    # Mostrar imagen actual
-                    event = eventos[st.session_state.current_event]
-                    st.image(
-                        event["imagen"],
-                        use_column_width=True,
-                        caption=f"{event['titulo']} - {event['descripcion']}"
-                    )
-                
-                with col3:
-                    st.button("▶", on_click=update_event, args=(1,), key="next_btn")
-            
-            # Indicadores de posición (puntos)
-            st.markdown("<div class='carousel-nav'>", unsafe_allow_html=True)
-            for i in range(len(eventos)):
-                dot_class = "active" if i == st.session_state.current_event else ""
-                st.markdown(
-                    f"<span class='carousel-dot {dot_class}' onclick='window.parent.streamlit.setComponentValue({i})'></span>",
-                    unsafe_allow_html=True
-                )
-            st.markdown("</div>", unsafe_allow_html=True)
+        show_carousel()
 
 #############################################################
 #############################################################    
