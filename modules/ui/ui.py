@@ -331,15 +331,7 @@ def display_videos_and_info(lang_code, landing_t):
     # Tab de Casos de uso
     with tab_use_case:
         use_case_videos = {
-            "English - Radar use chart": "https://youtu.be/fFbbtlIewgs",
-            "English - Use AI Bot and arcs charts fuctions": "https://youtu.be/XjM-1oOl-ao",
-            "English - Arcs use charts, example 1": "https://youtu.be/PdK_bgigVaM",
-            "English - Arcs use charts, excample 2": "https://youtu.be/7uaV1njPOng",   
-            "Español - Uso del diagrama radar para verificar redacción": "https://www.youtube.com/watch?v=nJP6xscPLBU",
-            "Español - Uso de los diagramas de arco, ejemplo 1": "https://www.youtube.com/watch?v=ApBIAr2S-bE",            
-            "Español - Uso de los diagramas de arco, ejemplo 2": "https://www.youtube.com/watch?v=JnP2U1Fm0rc",
-            "Español - Uso de los diagramas de arco, ejemplo 3": "https://www.youtube.com/watch?v=waWWwPTaI-Y",
-            "Español - Uso del bot para buscar respuestas" : "https://www.youtube.com/watch?v=GFKDS0K2s7E" 
+            "Español - Semantic Analysis": "https://https://youtu.be/_4WMufl6MTA"
         }
         
         selected_title = st.selectbox(landing_t['select_use_case'], list(use_case_videos.keys()))
