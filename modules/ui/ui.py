@@ -75,50 +75,66 @@ eventos = [
     }
 ]
 
-# Inicialización robusta del session state
-def initialize_session_state():
-    if 'current_event' not in st.session_state:
+def initialize_carousel_state():
+    """Inicializa todas las variables de estado necesarias para el carrusel"""
+    if not hasattr(st.session_state, 'current_event'):
         st.session_state.current_event = 0
+    if not hasattr(st.session_state, 'carousel_initialized'):
+        st.session_state.carousel_initialized = True
 
-# Función para navegación con verificación de estado
-def update_event(delta):
-    initialize_session_state()  # Asegurar que el estado existe
-    st.session_state.current_event = (st.session_state.current_event + delta) % len(eventos)
-
-# Contenedor del carrusel
+#####################
 def show_carousel():
-    initialize_session_state()  # Inicializar al mostrar el carrusel
-    
-    with st.container():
-        st.markdown("<h2 style='text-align: center;'>Eventos Relevantes</h2>", unsafe_allow_html=True)
+    """Muestra el carrusel de imágenes con inicialización segura del estado"""
+    try:
+        # Inicialización segura del estado
+        initialize_carousel_state()
+        
+        # Verificación adicional
+        if not hasattr(st.session_state, 'current_event'):
+            st.session_state.current_event = 0
+            st.rerun()
+            
+        current_idx = st.session_state.current_event
         
         with st.container():
+            st.markdown("<h2 style='text-align: center; margin-bottom: 30px;'>Eventos Relevantes</h2>", 
+                       unsafe_allow_html=True)
+            
+            # Controles de navegación
             col1, col2, col3 = st.columns([1, 6, 1])
             
             with col1:
-                st.button("◀", on_click=update_event, args=(-1,), key="prev_btn")
+                if st.button("◀", key="carousel_prev"):
+                    st.session_state.current_event = (current_idx - 1) % len(eventos)
+                    st.rerun()
             
             with col2:
-                # Mostrar imagen actual
-                event = eventos[st.session_state.current_event]
+                event = eventos[current_idx]
+                img = Image.open(event["imagen"]) if isinstance(event["imagen"], str) else event["imagen"]
                 st.image(
-                    event["imagen"],
+                    img,
                     use_column_width=True,
                     caption=f"{event['titulo']} - {event['descripcion']}"
                 )
             
             with col3:
-                st.button("▶", on_click=update_event, args=(1,), key="next_btn")
-        
-        # Indicadores de posición (puntos)
-        st.markdown("<div class='carousel-nav'>", unsafe_allow_html=True)
-        for i in range(len(eventos)):
-            dot_class = "active" if i == st.session_state.current_event else ""
-            st.markdown(
-                f"<span class='carousel-dot {dot_class}' onclick='st.session_state.current_event = {i}; st.rerun()'></span>",
-                unsafe_allow_html=True
-            )
-        st.markdown("</div>", unsafe_allow_html=True)
+                if st.button("▶", key="carousel_next"):
+                    st.session_state.current_event = (current_idx + 1) % len(eventos)
+                    st.rerun()
+            
+            # Indicadores de posición
+            st.markdown("<div class='carousel-nav'>", unsafe_allow_html=True)
+            cols = st.columns(len(eventos))
+            for i, col in enumerate(cols):
+                with col:
+                    if st.button("•", key=f"carousel_dot_{i}"):
+                        st.session_state.current_event = i
+                        st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+    except Exception as e:
+        st.error(f"Error al mostrar el carrusel: {str(e)}")
+        logger.error(f"Error en show_carousel: {str(e)}")
 
 #########################################################
 
