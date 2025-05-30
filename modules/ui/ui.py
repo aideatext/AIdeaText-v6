@@ -1,6 +1,6 @@
 # modules/ui/ui.py
 import streamlit as st
-from PIL import image
+from PIL import Image
 import base64
 from streamlit_player import st_player
 import logging
