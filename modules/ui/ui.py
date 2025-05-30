@@ -1,9 +1,133 @@
 # modules/ui/ui.py
 import streamlit as st
+from PIL import Image
+import base64
 from streamlit_player import st_player
 import logging
 from datetime import datetime
 from dateutil.parser import parse
+
+#########################################################
+# Configuración de estilo CSS para el carrusel
+st.markdown("""
+<style>
+    .carousel-container {
+        position: relative;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .carousel-image {
+        width: 100%;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        display: none;
+    }
+    .carousel-image.active {
+        display: block;
+        animation: fadeIn 0.5s;
+    }
+    @keyframes fadeIn {
+        from {opacity: 0.4;}
+        to {opacity: 1;}
+    }
+    .carousel-caption {
+        text-align: center;
+        margin-top: 10px;
+        font-size: 1.1em;
+        color: #333;
+    }
+    .carousel-nav {
+        display: flex;
+        justify-content: center;
+        margin-top: 15px;
+    }
+    .carousel-dot {
+        height: 12px;
+        width: 12px;
+        margin: 0 5px;
+        background-color: #bbb;
+        border-radius: 50%;
+        display: inline-block;
+        cursor: pointer;
+    }
+    .carousel-dot.active {
+        background-color: #717171;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# Datos del carrusel (imágenes y descripciones)
+eventos = [
+    {
+        "imagen": "assets/img/socialmedia/WebSummit ShowCase 2025.png",
+        "titulo": "WebSummitRio 2025, Brasil, april, 27-30",
+        "descripcion": "AIdeaText showcase"
+    }
+]
+
+def initialize_carousel_state():
+    """Inicializa todas las variables de estado necesarias para el carrusel"""
+    if not hasattr(st.session_state, 'current_event'):
+        st.session_state.current_event = 0
+    if not hasattr(st.session_state, 'carousel_initialized'):
+        st.session_state.carousel_initialized = True
+
+#####################
+def show_carousel():
+    """Muestra el carrusel de imágenes con inicialización segura del estado"""
+    try:
+        # Inicialización segura del estado
+        initialize_carousel_state()
+        
+        # Verificación adicional
+        if not hasattr(st.session_state, 'current_event'):
+            st.session_state.current_event = 0
+            st.rerun()
+            
+        current_idx = st.session_state.current_event
+        
+        with st.container():
+            #st.markdown("<h2 style='text-align: center; margin-bottom: 30px;'>Eventos Relevantes</h2>", 
+            #           unsafe_allow_html=True)
+            
+            # Controles de navegación
+            col1, col2, col3 = st.columns([1, 6, 1])
+            
+            with col1:
+                if st.button("◀", key="carousel_prev"):
+                    st.session_state.current_event = (current_idx - 1) % len(eventos)
+                    st.rerun()
+            
+            with col2:
+                event = eventos[current_idx]
+                img = Image.open(event["imagen"]) if isinstance(event["imagen"], str) else event["imagen"]
+                st.image(
+                    img,
+                    use_container_width=True,  # <-- Cambio realizado aquí
+                    caption=f"{event['titulo']} - {event['descripcion']}"
+                )
+            
+            with col3:
+                if st.button("▶", key="carousel_next"):
+                    st.session_state.current_event = (current_idx + 1) % len(eventos)
+                    st.rerun()
+            
+            # Indicadores de posición
+            st.markdown("<div class='carousel-nav'>", unsafe_allow_html=True)
+            cols = st.columns(len(eventos))
+            for i, col in enumerate(cols):
+                with col:
+                    if st.button("•", key=f"carousel_dot_{i}"):
+                        st.session_state.current_event = i
+                        st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+    except Exception as e:
+        st.error(f"Error al mostrar el carrusel: {str(e)}")
+        logger.error(f"Error en show_carousel: {str(e)}")
+
+#########################################################
+
 
 # Configura el logger PRIMERO, antes de cualquier uso
 logging.basicConfig(level=logging.INFO)
@@ -192,16 +316,15 @@ def is_institutional_email(email):
         forbidden_domains = ['gmail.com', 'hotmail.com', 'yahoo.com', 'outlook.com']
         return not any(domain in email.lower() for domain in forbidden_domains)
 
-
 #############################################################
 #############################################################
 def display_videos_and_info(lang_code, landing_t):
     # Crear tabs para cada sección
-    tab_use_case, tab_videos, tab_events, tab_gallery, tab_news = st.tabs([
+    tab_gallery, tab_use_case, tab_videos, tab_events, tab_news = st.tabs([
+        landing_t['event_photos'],
         landing_t['use_cases'], 
         landing_t['presentation_videos'], 
         landing_t['academic_presentations'],
-        landing_t['event_photos'],
         landing_t['version_control']
     ])
 
@@ -300,40 +423,22 @@ def display_videos_and_info(lang_code, landing_t):
         Del 16 al 18 de mayo 2023
         """)
 
+##########################################################################################
+    
     # Tab de Galería
     with tab_gallery:
-        # Contenedor con ancho máximo
-        with st.container():
-            # Dividimos en dos columnas principales
-            col_left, col_right = st.columns(2)
-                        
-            # Columna izquierda: Foto 1 grande
-            with col_left:
-                # Foto 2 arriba
-                st.image("assets/img/socialmedia/_MG_2845.JPG", 
-                        caption="MakerFaire CDMX 2024", 
-                        width=480)  # Ajusta este valor según necesites
-                        # use_column_width=True)
-                
-                # Foto 3 abajo
-                st.image("assets/img/socialmedia/Facebook_CoverPhoto-1_820x312.jpg", 
-                        caption="MakerFaire CDMX 2024", 
-                        width=480)  # Ajusta este valor según necesites 
-                        # use_column_width=True)
+        show_carousel()
 
-                            # Columna derecha: Fotos 2 y 3 una encima de otra
-            with col_right:
-                st.image("assets/img/socialmedia/_MG_2790.jpg", 
-                        caption="MakerFaire CDMX 2024", 
-                        width=540)  # Ajusta este valor según necesites
-
-    
+#############################################################
+#############################################################    
     # Tab de Novedades - Usar contenido traducido
     with tab_news:
         st.markdown(f"### {landing_t['latest_version_title']}")
         for update in landing_t['version_updates']:
             st.markdown(f"- {update}")
-
+            
+#############################################################
+#############################################################
 # Definición de __all__ para especificar qué se exporta
 __all__ = ['main', 'login_register_page', 'initialize_session_state']
 

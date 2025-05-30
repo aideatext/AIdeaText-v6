@@ -24,6 +24,9 @@ numpy
 networkx
 matplotlib
 odfpy
+
+################
+pillow
 plotly
 pydantic
 python-dateutil
@@ -34,6 +37,7 @@ pymssql
 python-dotenv
 pymongo
 PyPDF2
+#########
 rlPyCairo
 requests
 reportlab
