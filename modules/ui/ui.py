@@ -103,7 +103,7 @@ def show_carousel():
                 img = Image.open(event["imagen"]) if isinstance(event["imagen"], str) else event["imagen"]
                 st.image(
                     img,
-                    use_column_width=True,
+                    use_container_width=True,  # <-- Cambio realizado aquí
                     caption=f"{event['titulo']} - {event['descripcion']}"
                 )
             
