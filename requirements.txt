@@ -37,6 +37,8 @@ pymssql
 python-dotenv
 pymongo
 PyPDF2
+pyvis
+
 #########
 rlPyCairo
 requests
@@ -47,12 +49,17 @@ reportlab
 spacy-streamlit
 seaborn
 squarify
+
+
+#Streamlit
 streamlit==1.45.1
 streamlit-float
 streamlit-player
 streamlit-chat
 streamlit-antd-components
 streamlit-option-menu
+streamlit-aggrid
+
 scipy
 sentencepiece
 scikit-learn
