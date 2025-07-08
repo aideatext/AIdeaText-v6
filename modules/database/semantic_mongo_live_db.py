@@ -1,8 +1,13 @@
-# modules/database/semantic_mongo_live_db.py
+
+# Importaciones estándar
 import logging
+import io
 import base64
 from datetime import datetime, timezone
 from pymongo.errors import PyMongoError
+
+# Importaciones de terceros
+import matplotlib.pyplot as plt
 
 # Importaciones locales
 from .mongo_db import (
