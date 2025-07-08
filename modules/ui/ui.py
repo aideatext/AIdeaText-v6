@@ -59,8 +59,14 @@ st.markdown("""
 # Datos del carrusel (imágenes y descripciones)
 eventos = [
     {
-        "imagen": "assets/img/socialmedia/WebSummit ShowCase 2025.png",
+        "imagen": "assets/img/socialmedia/WebSummit_ShowCase_2025.png",
         "titulo": "WebSummitRio 2025, Brasil, april, 27-30",
+        "descripcion": "AIdeaText showcase"
+    },
+    
+    {
+        "imagen": "assets/img/socialmedia/image_pycon_2024.png",
+        "titulo": "PyCon 2024, Colombia, june, 7-9",
         "descripcion": "AIdeaText showcase"
     }
 ]
