@@ -384,6 +384,31 @@ def display_discourse_comparison(analysis: dict, t: dict):
 
 
 
+#################################################################################
+def clean_chat_content(content: str) -> str:
+    """Limpia caracteres especiales del contenido del chat"""
+    if not content:
+        return content
+        
+    # Eliminar caracteres de bloque y otros especiales
+    special_chars = ["▌", "\u2588", "\u2580", "\u2584", "\u258C", "\u2590"]
+    for char in special_chars:
+        content = content.replace(char, "")
+    
+    # Normalizar espacios y saltos de línea
+    content = re.sub(r'\s+', ' ', content).strip()
+    return content
+
+# Modificar el loop de visualización en display_chat_activities:
+for message in chat['messages']:
+    role = message.get('role', 'unknown')
+    content = clean_chat_content(message.get('content', ''))
+    
+    with st.chat_message(role):
+        st.markdown(content)
+    
+    st.divider()
+
 
 #################################################################################   
 def display_chat_activities(username: str, t: dict):
@@ -416,7 +441,7 @@ def display_chat_activities(username: str, t: dict):
                         # Mostrar cada mensaje en la conversación
                         for message in chat['messages']:
                             role = message.get('role', 'unknown')
-                            content = message.get('content', '')
+                            content = clean_chat_content(message.get('content', ''))
                             
                             # Usar el componente de chat de Streamlit
                             with st.chat_message(role):
@@ -455,27 +480,5 @@ def get_formatted_chats(username: str, limit: int = 50) -> list:
         
 #################################################################################    
 
-def clean_chat_content(content: str) -> str:
-    """Limpia caracteres especiales del contenido del chat"""
-    if not content:
-        return content
-        
-    # Eliminar caracteres de bloque y otros especiales
-    special_chars = ["▌", "\u2588", "\u2580", "\u2584", "\u258C", "\u2590"]
-    for char in special_chars:
-        content = content.replace(char, "")
-    
-    # Normalizar espacios y saltos de línea
-    content = re.sub(r'\s+', ' ', content).strip()
-    return content
 
-# Modificar el loop de visualización en display_chat_activities:
-for message in chat['messages']:
-    role = message.get('role', 'unknown')
-    content = clean_chat_content(message.get('content', ''))
-    
-    with st.chat_message(role):
-        st.markdown(content)
-    
-    st.divider()
 
