@@ -78,7 +78,7 @@ def display_student_activities(username: str, lang_code: str, t: dict):
 ###############################################################################################
 
 def display_semantic_live_activities(username: str, t: dict):
-    """Muestra actividades de análisis semántico en vivo"""
+    """Muestra actividades de análisis semántico en vivo (CORREGIDO)"""
     try:
         analyses = get_student_semantic_live_analysis(username)
         
@@ -88,7 +88,12 @@ def display_semantic_live_activities(username: str, t: dict):
 
         for analysis in analyses:
             try:
-                timestamp = datetime.fromisoformat(analysis['timestamp'].replace('Z', '+00:00'))
+                # Manejar formato de fecha (CORREGIDO)
+                if isinstance(analysis['timestamp'], str):
+                    timestamp = datetime.fromisoformat(analysis['timestamp'].replace('Z', '+00:00'))
+                else:
+                    timestamp = analysis['timestamp']
+                    
                 formatted_date = timestamp.strftime("%d/%m/%Y %H:%M:%S")
                 
                 with st.expander(f"{t.get('analysis_date', 'Fecha')}: {formatted_date}", expanded=False):
@@ -100,17 +105,24 @@ def display_semantic_live_activities(username: str, t: dict):
                         disabled=True
                     )
                     
-                    # Mostrar gráfico si existe
+                    # Mostrar gráfico si existe (CORREGIDO)
                     if analysis.get('concept_graph'):
                         try:
-                            image_data = analysis['concept_graph']
-                            image_bytes = base64.b64decode(image_data) if isinstance(image_data, str) else image_data
-                            
-                            st.image(
-                                image_bytes,
-                                caption=t.get('concept_network', 'Red de Conceptos'),
-                                use_container_width=True
-                            )
+                            # Manejar diferentes formatos de imagen
+                            if isinstance(analysis['concept_graph'], bytes):
+                                st.image(
+                                    analysis['concept_graph'],
+                                    caption=t.get('concept_network', 'Red de Conceptos'),
+                                    use_container_width=True
+                                )
+                            elif isinstance(analysis['concept_graph'], str):
+                                # Decodificar si está en base64
+                                image_bytes = base64.b64decode(analysis['concept_graph'])
+                                st.image(
+                                    image_bytes,
+                                    caption=t.get('concept_network', 'Red de Conceptos'),
+                                    use_container_width=True
+                                )
                         except Exception as img_error:
                             logger.error(f"Error procesando gráfico: {str(img_error)}")
                             st.error(t.get('error_loading_graph', 'Error al cargar el gráfico'))
