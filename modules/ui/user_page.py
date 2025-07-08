@@ -215,7 +215,7 @@ def user_page(lang_code, t):
                     if can_switch:
                         st.session_state.selected_tab = index
 
-                eif index == 0:  # Semántico modo texto
+                if index == 0:  # Semántico modo texto
                     st.session_state.tab_states['semantic_live_active'] = True
                     display_semantic_interface(
                         st.session_state.lang_code,
