@@ -61,7 +61,7 @@ class ChatProcessor:
             Tus tareas:
             1. Responder preguntas sobre conceptos y sus relaciones
             2. Explicar la estructura de la red semántica
-            3. Sugerir mejoras al texto
+            3. Sugerir mejorias al texto
             4. Proporcionar insights basados en centralidad de conceptos""",
             
             'pt': f"""Você é um especialista em análise semântica. O usuário analisou um artigo de pesquisa.
@@ -73,10 +73,25 @@ class ChatProcessor:
             1. Responder perguntas sobre conceitos e suas relações
             2. Explicar a estrutura da rede semântica
             3. Sugerir melhorias no texto
-            4. Fornecer insights com base na centralidade dos conceitos"""
+            4. Fornecer insights com base na centralidade dos conceitos""",
+            
+            'fr': f"""Vous êtes un expert en analyse sémantique. L'utilisateur a analysé un article de recherche.
+            Texte complet disponible (abrégé pour le contexte).
+            Concepts clés: {top_concepts}
+            Graphique disponible: {self.semantic_context['graph_available']}
+            
+            Vos tâches:
+            1. Répondre aux questions sur les concepts et leurs relations
+            2. Expliquer la structure du réseau sémantique
+            3. Suggérer des améliorations de texte
+            4. Fournir des insights basés sur la centralité des concepts"""
         }
         
         return prompts.get(self.current_lang, prompts['en'])
+
+    def clean_generated_text(self, text):
+        """Limpia caracteres especiales del texto generado"""
+        return text.replace("\u2588", "").replace("▌", "").strip()
 
     def process_chat_input(self, message: str, lang_code: str) -> Generator[str, None, None]:
         """Procesa el mensaje con todo el contexto disponible"""
@@ -110,8 +125,9 @@ class ChatProcessor:
             ) as stream:
                 full_response = ""
                 for chunk in stream.text_stream:
-                    full_response += chunk
-                    yield chunk + "▌"
+                    cleaned_chunk = self.clean_generated_text(chunk)
+                    full_response += cleaned_chunk
+                    yield cleaned_chunk
                 
                 # Guardar respuesta en historial
                 self.conversation_history.extend([
@@ -120,18 +136,12 @@ class ChatProcessor:
                 ])
                 logger.info("Respuesta generada y guardada en historial")
 
-        # Asegurar limpieza de caracteres especiales
-        def clean_generated_text(text):
-            return text.replace("\u2588", "").replace("▌", "").strip()
-        
-        # Aplicar limpieza a la generación
-        for chunk in self.generate_response(user_input, lang_code):
-            yield clean_generated_text(chunk)
-            
         except Exception as e:
             logger.error(f"Error en process_chat_input: {str(e)}", exc_info=True)
-            yield {
+            error_messages = {
                 'en': "Error processing message. Please reload the analysis.",
                 'es': "Error al procesar mensaje. Recargue el análisis.",
-                'pt': "Erro ao processar mensagem. Recarregue a análise."
-            }.get(self.current_lang, "Processing error")
+                'pt': "Erro ao processar mensagem. Recarregue a análise.",
+                'fr': "Erreur lors du traitement du message. Veuillez recharger l'analyse."
+            }
+            yield error_messages.get(self.current_lang, "Processing error")
