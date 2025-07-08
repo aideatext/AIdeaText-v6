@@ -67,3 +67,4 @@ assets/img/socialmedia/Facebook_CoverPhoto_820x312.jpg filter=lfs diff=lfs merge
 assets/img/socialmedia/Facebook_CoverPhoto-1_820x312.jpg filter=lfs diff=lfs merge=lfs -text
 assets/img/socialmedia/WebSummit[[:space:]]ShowCase[[:space:]]2025.png filter=lfs diff=lfs merge=lfs -text
 assets/img/WebSummit[[:space:]]ShowCase[[:space:]]2025.png filter=lfs diff=lfs merge=lfs -text
+assets/img/socialmedia/image_pycon_2024.png filter=lfs diff=lfs merge=lfs -text
