@@ -2,21 +2,46 @@
 from .mongo_db import insert_document, find_documents, get_collection
 from datetime import datetime, timezone
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 COLLECTION_NAME = 'chat_history-v3'
 
-def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int = None) -> list:
+def clean_text_content(text: str) -> str:
     """
-    Recupera el historial del chat.
+    Limpia y normaliza el texto para almacenamiento seguro en UTF-8.
     
     Args:
-        username: Nombre del usuario
-        analysis_type: Tipo de análisis ('sidebar' por defecto)
-        limit: Límite de conversaciones a recuperar
+        text: Texto a limpiar
         
     Returns:
-        list: Lista de conversaciones con formato
+        str: Texto limpio y normalizado
+    """
+    if not text:
+        return text
+    
+    # Caracteres especiales a eliminar (incluyendo los bloques y otros caracteres problemáticos)
+    special_chars = ["▌", "\u2588", "\u2580", "\u2584", "\u258C", "\u2590"]
+    
+    # Eliminar caracteres especiales
+    for char in special_chars:
+        text = text.replace(char, "")
+    
+    # Normalizar espacios y saltos de línea
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    # Asegurar codificación UTF-8
+    try:
+        text = text.encode('utf-8', errors='strict').decode('utf-8')
+    except UnicodeError:
+        text = text.encode('utf-8', errors='ignore').decode('utf-8')
+        logger.warning("Se encontraron caracteres no UTF-8 en el texto")
+    
+    return text
+
+def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int = None) -> list:
+    """
+    Recupera el historial del chat con codificación UTF-8 segura.
     """
     try:
         query = {
@@ -29,7 +54,6 @@ def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int =
             logger.error("No se pudo obtener la colección de chat")
             return []
             
-        # Obtener y formatear conversaciones
         cursor = collection.find(query).sort("timestamp", -1)
         if limit:
             cursor = cursor.limit(limit)
@@ -37,17 +61,23 @@ def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int =
         conversations = []
         for chat in cursor:
             try:
-                formatted_chat = {
-                    'timestamp': chat['timestamp'],
-                    'messages': [
-                        {
+                # Limpiar y asegurar UTF-8 en cada mensaje
+                cleaned_messages = []
+                for msg in chat.get('messages', []):
+                    try:
+                        cleaned_messages.append({
                             'role': msg.get('role', 'unknown'),
-                            'content': msg.get('content', '')
-                        }
-                        for msg in chat.get('messages', [])
-                    ]
-                }
-                conversations.append(formatted_chat)
+                            'content': clean_text_content(msg.get('content', ''))
+                        })
+                    except Exception as msg_error:
+                        logger.error(f"Error procesando mensaje: {str(msg_error)}")
+                        continue
+                
+                conversations.append({
+                    'timestamp': chat['timestamp'],
+                    'messages': cleaned_messages
+                })
+                
             except Exception as e:
                 logger.error(f"Error formateando chat: {str(e)}")
                 continue
@@ -58,17 +88,9 @@ def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int =
         logger.error(f"Error al recuperar historial de chat: {str(e)}")
         return []
 
-def store_chat_history(username: str, messages: list, analysis_type: str = 'sidebar') -> bool:
+def store_chat_history(username: str, messages: list, analysis_type: str = 'sidebar', metadata: dict = None) -> bool:
     """
-    Guarda el historial del chat.
-    
-    Args:
-        username: Nombre del usuario
-        messages: Lista de mensajes a guardar
-        analysis_type: Tipo de análisis
-    
-    Returns:
-        bool: True si se guardó correctamente
+    Guarda el historial del chat con codificación UTF-8 segura.
     """
     try:
         collection = get_collection(COLLECTION_NAME)
@@ -76,42 +98,43 @@ def store_chat_history(username: str, messages: list, analysis_type: str = 'side
             logger.error("No se pudo obtener la colección de chat")
             return False
             
-        # Formatear mensajes antes de guardar
-        formatted_messages = [
-            {
-                'role': msg.get('role', 'unknown'),
-                'content': msg.get('content', ''),
-                'timestamp': datetime.now(timezone.utc).isoformat()
-            }
-            for msg in messages
-        ]
+        # Limpiar y formatear cada mensaje
+        formatted_messages = []
+        for msg in messages:
+            try:
+                formatted_messages.append({
+                    'role': msg.get('role', 'unknown'),
+                    'content': clean_text_content(msg.get('content', '')),
+                    'timestamp': datetime.now(timezone.utc).isoformat()
+                })
+            except Exception as msg_error:
+                logger.error(f"Error procesando mensaje para almacenar: {str(msg_error)}")
+                continue
         
         chat_document = {
             'username': username,
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'messages': formatted_messages,
             'analysis_type': analysis_type,
-            'metadata': metadata or {}  # Nuevo campo 18-5-2025
+            'metadata': metadata or {}
         }
+        
+        # Verificación adicional de UTF-8 antes de insertar
+        try:
+            import json
+            json.dumps(chat_document, ensure_ascii=False)
+        except UnicodeEncodeError as e:
+            logger.error(f"Error de codificación en documento: {str(e)}")
+            return False
         
         result = collection.insert_one(chat_document)
         if result.inserted_id:
-            logger.info(f"Historial de chat guardado con ID: {result.inserted_id} para el usuario: {username}")
+            logger.info(f"Chat guardado para {username} con ID: {result.inserted_id}")
             return True
             
         logger.error("No se pudo insertar el documento")
         return False
         
     except Exception as e:
-        logger.error(f"Error al guardar historial de chat: {str(e)}")
+        logger.error(f"Error al guardar historial: {str(e)}")
         return False
-        
-        
-        #def get_chat_history(username, analysis_type=None, limit=10):
-#    query = {"username": username}
-#    if analysis_type:
-#        query["analysis_type"] = analysis_type
-
-#    return find_documents(COLLECTION_NAME, query, sort=[("timestamp", -1)], limit=limit)
-
-# Agregar funciones para actualizar y eliminar chat si es necesario
