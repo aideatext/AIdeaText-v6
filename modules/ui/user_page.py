@@ -312,7 +312,7 @@ def display_feedback_form(lang_code, t):
     if not feedback_t:
         feedback_t = t
 
-    #st.header(feedback_t.get('feedback_title', 'Formulario de Opinión'))
+    #st.header(feedback_t.get('feedback_title', 'Formulario de Opinión')) #####
 
     name = st.text_input(feedback_t.get('name', 'Nombre'))
     email = st.text_input(feedback_t.get('email', 'Correo electrónico'))
