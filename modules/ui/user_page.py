@@ -1,3 +1,5 @@
+# modules/ui/user_page.py
+
 import streamlit as st
 import logging
 from datetime import datetime, timezone
@@ -10,6 +12,7 @@ logger = logging.getLogger(__name__)
 #Importaciones locales.
 
 from ..utils.widget_utils import generate_unique_key
+
 from session_state import initialize_session_state, logout
 
 from translations import get_translations
@@ -21,9 +24,11 @@ from ..admin.admin_ui import admin_page
 from ..chatbot import display_sidebar_chat
 
 # Students activities
+
 from ..studentact.student_activities_v2 import display_student_activities
-from ..studentact.current_situation_interface import display_current_situation_interface
-from ..studentact.current_situation_analysis import analyze_text_dimensions
+
+#from ..studentact.current_situation_interface import display_current_situation_interface
+#from ..studentact.current_situation_analysis import analyze_text_dimensions
 
 
 ##Importaciones desde la configuración de bases datos #######
@@ -63,7 +68,7 @@ from ..database.semantic_mongo_db import (
     get_student_semantic_data
 )
 
-
+from ..database.semantic_mongo_live_db import get_student_semantic_live_analysis
 
 from ..database.chat_mongo_db import store_chat_history, get_chat_history
 
@@ -192,8 +197,8 @@ def user_page(lang_code, t):
     
     # Sistema de tabs
     tab_names = [
-        t.get('semantic_live_tab', 'Análisis Semántico modo texto'),
-        t.get('semantic_tab', 'Análisis Semántico modo archivo'),
+        t.get('semantic_live_tab', 'Análisis Semántico (Texto Directo)'),
+        t.get('semantic_tab', 'Análisis Semántico'),
         t.get('discourse_tab', 'Análisis comparado de textos'),
         t.get('activities_tab', 'Registro de mis actividades'),
         t.get('feedback_tab', 'Formulario de Comentarios')
@@ -215,17 +220,17 @@ def user_page(lang_code, t):
                     if can_switch:
                         st.session_state.selected_tab = index
 
-                if index == 0:  # Semántico modo texto
+                if index == 0:  # Semántico Live
                     st.session_state.tab_states['semantic_live_active'] = True
-                    display_semantic_interface(
+                    display_semantic_live_interface(
                         st.session_state.lang_code,
                         st.session_state.nlp_models,
-                        t  # Pasamos todo el diccionario de traducciones
+                        t
                     )
-
-                elif index == 1:  # Semántico modo archivo
+                
+                elif index == 1:  # Semántico
                     st.session_state.tab_states['semantic_active'] = True
-                    display_discourse_interface(
+                    display_semantic_interface(
                         st.session_state.lang_code,
                         st.session_state.nlp_models,
                         t  # Pasamos todo el diccionario de traducciones
@@ -296,6 +301,8 @@ def get_state_key_for_index(index):
     }
     return state_map.get(index)
 
+###################################
+######################################################################    
 def display_feedback_form(lang_code, t):
     """
     Muestra el formulario de retroalimentación
@@ -312,7 +319,7 @@ def display_feedback_form(lang_code, t):
     if not feedback_t:
         feedback_t = t
 
-    #st.header(feedback_t.get('feedback_title', 'Formulario de Opinión')) #####
+    #st.header(feedback_t.get('feedback_title', 'Formulario de Opinión'))
 
     name = st.text_input(feedback_t.get('name', 'Nombre'))
     email = st.text_input(feedback_t.get('email', 'Correo electrónico'))
