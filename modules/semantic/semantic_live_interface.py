@@ -15,7 +15,9 @@ from .semantic_process import (
 )
 
 from ..utils.widget_utils import generate_unique_key
-from ..database.semantic_mongo_db import store_student_semantic_result
+
+from ..database.semantic_mongo_live_db import store_student_semantic_live_result
+
 from ..database.chat_mongo_db import store_chat_history, get_chat_history
 
 def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
