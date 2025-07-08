@@ -383,6 +383,8 @@ def display_discourse_comparison(analysis: dict, t: dict):
         st.info(t.get('no_concepts2', 'No hay conceptos disponibles para el Texto 2'))
 
 
+
+
 #################################################################################   
 def display_chat_activities(username: str, t: dict):
     """
@@ -433,4 +435,29 @@ def display_chat_activities(username: str, t: dict):
         logger.error(f"Error mostrando historial del chat: {str(e)}")
         st.error(t.get('error_chat', 'Error al mostrar historial del chat'))
         
-#################################################################################        
+#################################################################################    
+
+def clean_chat_content(content: str) -> str:
+    """Limpia caracteres especiales del contenido del chat"""
+    if not content:
+        return content
+        
+    # Eliminar caracteres de bloque y otros especiales
+    special_chars = ["▌", "\u2588", "\u2580", "\u2584", "\u258C", "\u2590"]
+    for char in special_chars:
+        content = content.replace(char, "")
+    
+    # Normalizar espacios y saltos de línea
+    content = re.sub(r'\s+', ' ', content).strip()
+    return content
+
+# Modificar el loop de visualización en display_chat_activities:
+for message in chat['messages']:
+    role = message.get('role', 'unknown')
+    content = clean_chat_content(message.get('content', ''))
+    
+    with st.chat_message(role):
+        st.markdown(content)
+    
+    st.divider()
+
