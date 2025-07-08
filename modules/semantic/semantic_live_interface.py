@@ -110,7 +110,7 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
 
         # Columna derecha: Visualización de resultados
         with result_col:
-            st.subheader(semantic_t.get('live_results', 'Resultados en vivo'))
+            # st.subheader(semantic_t.get('live_results', 'Resultados en vivo'))
 
             if 'last_result' in st.session_state.semantic_live_state and \
                st.session_state.semantic_live_state['last_result'] is not None:
