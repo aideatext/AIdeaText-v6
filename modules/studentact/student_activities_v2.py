@@ -434,6 +434,24 @@ def display_chat_activities(username: str, t: dict):
     except Exception as e:
         logger.error(f"Error mostrando historial del chat: {str(e)}")
         st.error(t.get('error_chat', 'Error al mostrar historial del chat'))
+
+# Asegúrate que no haya código suelto fuera de funciones que intente acceder a 'chat'
+# Si necesitas procesar chats fuera de esta función, crea una nueva función:
+
+def get_formatted_chats(username: str, limit: int = 50) -> list:
+    """Obtiene chats formateados para uso externo"""
+    chat_history = get_chat_history(
+        username=username,
+        analysis_type='sidebar',
+        limit=limit
+    )
+    return [
+        {
+            'timestamp': chat['timestamp'],
+            'messages': chat.get('messages', [])
+        }
+        for chat in reversed(chat_history)
+    ] if chat_history else []
         
 #################################################################################    
 
