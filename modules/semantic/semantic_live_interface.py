@@ -230,7 +230,7 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
                     st.info(semantic_t.get('no_graph', 'No hay datos para mostrar'))
             else:
                 st.info(semantic_t.get('analysis_prompt', 'Realice un análisis para ver los resultados'))
-####
+
     except Exception as e:
         logger.error(f"Error general en interfaz semántica en vivo: {str(e)}")
         st.error(semantic_t.get('general_error', "Se produjo un error. Por favor, intente de nuevo."))
