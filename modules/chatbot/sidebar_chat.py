@@ -69,6 +69,7 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                     {
                         'en': "Ask about the analysis...",
                         'es': "Pregunta sobre el análisis...",
+                        'fr': "Question sur l'analyse...",
                         'pt': "Pergunte sobre a análise..."
                     }.get(lang_code, "Message...")
                 )
@@ -81,19 +82,27 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                             st.session_state.sidebar_messages.append(
                                 {"role": "user", "content": user_input}
                             )
-
-                            # Obtener y mostrar respuesta
+                
+                            # Obtener y mostrar respuesta (con limpieza de caracteres)
                             with st.chat_message("assistant"):
-                                response = st.write_stream(
-                                    st.session_state.chat_processor.process_chat_input(
-                                        user_input, lang_code
-                                    )
+                                response_stream = st.session_state.chat_processor.process_chat_input(
+                                    user_input, lang_code
                                 )
+                                
+                                # Limpiar el stream de respuesta
+                                def clean_response_stream(stream):
+                                    for chunk in stream:
+                                        yield chunk.replace("▌", "")
+                                
+                                response = st.write_stream(clean_response_stream(response_stream))
+                                
+                                # Guardar respuesta limpia
+                                clean_response = response.replace("▌", "")
                                 st.session_state.sidebar_messages.append(
-                                    {"role": "assistant", "content": response.replace("▌", "")}
+                                    {"role": "assistant", "content": clean_response}
                                 )
-
-                        # Guardar en base de datos
+                
+                        # Guardar en base de datos (con texto limpio)
                         if 'username' in st.session_state:
                             store_chat_history(
                                 username=st.session_state.username,
@@ -110,6 +119,7 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                         st.error({
                             'en': "Error processing request. Try again.",
                             'es': "Error al procesar. Intente nuevamente.",
+                            'fr': "Erreur de traitement. Veuillez réessayer.",
                             'pt': "Erro ao processar. Tente novamente."
                         }.get(lang_code, "Error"))
 
