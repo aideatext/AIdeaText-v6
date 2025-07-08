@@ -120,6 +120,14 @@ class ChatProcessor:
                 ])
                 logger.info("Respuesta generada y guardada en historial")
 
+        # Asegurar limpieza de caracteres especiales
+        def clean_generated_text(text):
+            return text.replace("\u2588", "").replace("▌", "").strip()
+        
+        # Aplicar limpieza a la generación
+        for chunk in self.generate_response(user_input, lang_code):
+            yield clean_generated_text(chunk)
+            
         except Exception as e:
             logger.error(f"Error en process_chat_input: {str(e)}", exc_info=True)
             yield {
