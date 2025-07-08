@@ -39,23 +39,29 @@ def store_student_semantic_live_result(username, text, analysis_result, lang_cod
             logger.error("Parámetros incompletos para guardar análisis")
             return False
 
-        # 3. Preparar documento
+        # 3. Preparar documento (CORREGIDO)
         analysis_document = {
             'username': username,
             'timestamp': datetime.now(timezone.utc),
             'text': text[:50000],
             'analysis_type': 'semantic_live',
             'language': lang_code,
-            'key_concepts': analysis_result.get('key_concepts', [])[:50],
-            'concept_centrality': analysis_result.get('concept_centrality', {})
+            # Extraer datos correctamente del análisis
+            'key_concepts': analysis_result.get('key_concepts', []),
+            'concept_centrality': analysis_result.get('concept_centrality', {}),
+            'concept_graph': None  # Inicializar como None
         }
-
-        # 4. Manejo del gráfico
+        
+        # 4. Manejo del gráfico (CORREGIDO)
         if 'concept_graph' in analysis_result and analysis_result['concept_graph']:
             try:
+                # Si ya es bytes, usar directamente
                 if isinstance(analysis_result['concept_graph'], bytes):
-                    analysis_document['concept_graph'] = base64.b64encode(
-                        analysis_result['concept_graph']).decode('utf-8')
+                    analysis_document['concept_graph'] = analysis_result['concept_graph']
+                else:
+                    # Convertir a bytes si es necesario
+                    analysis_document['concept_graph'] = base64.b64decode(
+                        analysis_result['concept_graph'])
             except Exception as e:
                 logger.error(f"Error procesando gráfico: {str(e)}")
 
