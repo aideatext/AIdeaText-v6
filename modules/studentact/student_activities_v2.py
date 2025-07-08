@@ -18,10 +18,11 @@ import logging
 
 # Importaciones de la base de datos
 # from ..database.morphosintax_mongo_db import get_student_morphosyntax_analysis
+
 from ..database.semantic_mongo_db import get_student_semantic_analysis
 from ..database.discourse_mongo_db import get_student_discourse_analysis
+
 from ..database.chat_mongo_db import get_chat_history
-from ..database.current_situation_mongo_db import get_current_situation_analysis
 from ..database.claude_recommendations_mongo_db import get_claude_recommendations
 
 # Importar la función generate_unique_key
@@ -30,6 +31,7 @@ from ..utils.widget_utils import generate_unique_key
 logger = logging.getLogger(__name__)
 
 ###################################################################################
+
 
 def display_student_activities(username: str, lang_code: str, t: dict):
     """
@@ -46,36 +48,79 @@ def display_student_activities(username: str, lang_code: str, t: dict):
         # Tabs para diferentes tipos de análisis
         # Cambiado "Análisis del Discurso" a "Análisis comparado de textos"
         tabs = st.tabs([
-            #t.get('current_situation_activities', 'Registros de la función: Mi Situación Actual'),
-            #t.get('morpho_activities', 'Registros de mis análisis morfosintácticos'),
+            t.get('semantic_live_activities', 'Registros de análisis en vivo'),
             t.get('semantic_activities', 'Registros de mis análisis semánticos'),
             t.get('discourse_activities', 'Registros de mis análisis comparado de textos'),
             t.get('chat_activities', 'Registros de mis conversaciones con el tutor virtual')
         ])
 
-        # Tab de Situación Actual
-        #with tabs[0]:
-        #    display_current_situation_activities(username, t)
-        
-        # Tab de Análisis Morfosintáctico
-        #with tabs[1]:
-        #    display_morphosyntax_activities(username, t)
-
         # Tab de Análisis Semántico
         with tabs[0]:
+            display_semantic_live_activities(username, t)
+        
+        with tabs[1]:
             display_semantic_activities(username, t)
 
         # Tab de Análisis del Discurso (mantiene nombre interno pero UI muestra "Análisis comparado de textos")
-        with tabs[1]:
+        with tabs[2]:
             display_discourse_activities(username, t)
             
         # Tab de Conversaciones del Chat
-        with tabs[2]:
+        with tabs[3]:
             display_chat_activities(username, t)
 
     except Exception as e:
         logger.error(f"Error mostrando actividades: {str(e)}")
         st.error(t.get('error_loading_activities', 'Error al cargar las actividades'))
+
+
+###############################################################################################
+
+def display_semantic_live_activities(username: str, t: dict):
+    """Muestra actividades de análisis semántico en vivo"""
+    try:
+        analyses = get_student_semantic_live_analysis(username)
+        
+        if not analyses:
+            st.info(t.get('no_semantic_live_analyses', 'No hay análisis semánticos en vivo registrados'))
+            return
+
+        for analysis in analyses:
+            try:
+                timestamp = datetime.fromisoformat(analysis['timestamp'].replace('Z', '+00:00'))
+                formatted_date = timestamp.strftime("%d/%m/%Y %H:%M:%S")
+                
+                with st.expander(f"{t.get('analysis_date', 'Fecha')}: {formatted_date}", expanded=False):
+                    # Mostrar texto (primeros 200 caracteres)
+                    st.text_area(
+                        "Texto analizado",
+                        value=analysis.get('text', '')[:200] + ("..." if len(analysis.get('text', '')) > 200 else ""),
+                        height=100,
+                        disabled=True
+                    )
+                    
+                    # Mostrar gráfico si existe
+                    if analysis.get('concept_graph'):
+                        try:
+                            image_data = analysis['concept_graph']
+                            image_bytes = base64.b64decode(image_data) if isinstance(image_data, str) else image_data
+                            
+                            st.image(
+                                image_bytes,
+                                caption=t.get('concept_network', 'Red de Conceptos'),
+                                use_container_width=True
+                            )
+                        except Exception as img_error:
+                            logger.error(f"Error procesando gráfico: {str(img_error)}")
+                            st.error(t.get('error_loading_graph', 'Error al cargar el gráfico'))
+
+            except Exception as e:
+                logger.error(f"Error procesando análisis individual: {str(e)}")
+                continue
+
+    except Exception as e:
+        logger.error(f"Error mostrando análisis semántico en vivo: {str(e)}")
+        st.error(t.get('error_semantic_live', 'Error al mostrar análisis semántico en vivo'))
 
 
 ###############################################################################################
