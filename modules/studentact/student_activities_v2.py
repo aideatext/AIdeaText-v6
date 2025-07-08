@@ -399,17 +399,6 @@ def clean_chat_content(content: str) -> str:
     content = re.sub(r'\s+', ' ', content).strip()
     return content
 
-# Modificar el loop de visualización en display_chat_activities:
-for message in chat['messages']:
-    role = message.get('role', 'unknown')
-    content = clean_chat_content(message.get('content', ''))
-    
-    with st.chat_message(role):
-        st.markdown(content)
-    
-    st.divider()
-
-
 #################################################################################   
 def display_chat_activities(username: str, t: dict):
     """
@@ -446,7 +435,7 @@ def display_chat_activities(username: str, t: dict):
                             # Usar el componente de chat de Streamlit
                             with st.chat_message(role):
                                 st.markdown(content)
-                                
+                            
                             # Agregar separador entre mensajes
                             st.divider()
                     else:
@@ -460,23 +449,7 @@ def display_chat_activities(username: str, t: dict):
         logger.error(f"Error mostrando historial del chat: {str(e)}")
         st.error(t.get('error_chat', 'Error al mostrar historial del chat'))
 
-# Asegúrate que no haya código suelto fuera de funciones que intente acceder a 'chat'
-# Si necesitas procesar chats fuera de esta función, crea una nueva función:
 
-def get_formatted_chats(username: str, limit: int = 50) -> list:
-    """Obtiene chats formateados para uso externo"""
-    chat_history = get_chat_history(
-        username=username,
-        analysis_type='sidebar',
-        limit=limit
-    )
-    return [
-        {
-            'timestamp': chat['timestamp'],
-            'messages': chat.get('messages', [])
-        }
-        for chat in reversed(chat_history)
-    ] if chat_history else []
         
 #################################################################################    
 
