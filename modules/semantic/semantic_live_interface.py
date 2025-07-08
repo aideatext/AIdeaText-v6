@@ -193,13 +193,12 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
                         col1, col2 = st.columns([1, 3])
                         
                         with col1:
-                            # Botón para consultar con el asistente (NUEVO)
+                            # Botón para consultar con el asistente (CORREGIDO)
                             if st.button("💬 Consultar con Asistente", 
-                                      key="semantic_live_chat_button",
-                                      use_container_width=True):
-                                if 'last_result' in st.session_state.semantic_live_state and \
-                                    st.session_state.semantic_live_state['last_result'] is not None:
-                                    
+                                       key="semantic_live_chat_button",
+                                       use_container_width=True):
+                                if 'last_result' not in st.session_state.semantic_live_state:
+                                    st.error("Primero complete el análisis semántico")
                                 else:
                                     st.session_state.semantic_agent_data = {
                                         'text': st.session_state.semantic_live_state['current_text'],
