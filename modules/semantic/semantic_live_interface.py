@@ -71,6 +71,7 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
             # 4. Procesar análisis cuando se presiona el botón
             if analyze_button and text_input:
                 st.session_state.semantic_live_state['pending_analysis'] = True
+                st.session_state.semantic_live_state['current_text'] = text_input  # Guardar texto actual
                 st.rerun()
 
             # 5. Manejar análisis pendiente
@@ -196,8 +197,8 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
                             if st.button("💬 Consultar con Asistente", 
                                       key="semantic_live_chat_button",
                                       use_container_width=True):
-                                if 'last_result' not in st.session_state.semantic_live_state:
-                                    st.error("Primero complete el análisis semántico")
+                                if 'last_result' in st.session_state.semantic_live_state and \
+                                    st.session_state.semantic_live_state['last_result'] is not None:
                                 else:
                                     st.session_state.semantic_agent_data = {
                                         'text': st.session_state.semantic_live_state['current_text'],
@@ -208,13 +209,14 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
                                     st.rerun()
                             
                             # Botón de descarga
-                            st.download_button(
-                                label="📥 " + semantic_t.get('download_graph', "Descargar"),
-                                data=analysis['concept_graph'],
-                                file_name="semantic_live_graph.png",
-                                mime="image/png",
-                                use_container_width=True
-                            )
+                            if 'concept_graph' in analysis:  # Verificar existencia
+                                st.download_button(
+                                    label="📥 " + semantic_t.get('download_graph', "Descargar"),
+                                    data=analysis['concept_graph'],
+                                    file_name="semantic_live_graph.png",
+                                    mime="image/png",
+                                    use_container_width=True
+                                )
                         
                         # Notificación si el agente está activo
                         if st.session_state.get('semantic_agent_active', False):
