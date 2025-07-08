@@ -200,14 +200,14 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
                                 if 'last_result' in st.session_state.semantic_live_state and \
                                     st.session_state.semantic_live_state['last_result'] is not None:
                                     
-                                    else:
-                                        st.session_state.semantic_agent_data = {
-                                            'text': st.session_state.semantic_live_state['current_text'],
-                                            'metrics': analysis,
-                                            'graph_data': analysis.get('concept_graph')
-                                        }
-                                        st.session_state.semantic_agent_active = True
-                                        st.rerun()
+                                else:
+                                    st.session_state.semantic_agent_data = {
+                                        'text': st.session_state.semantic_live_state['current_text'],
+                                        'metrics': analysis,
+                                        'graph_data': analysis.get('concept_graph')
+                                    }
+                                    st.session_state.semantic_agent_active = True
+                                    st.rerun()
                             
                             # Botón de descarga
                             if 'concept_graph' in analysis:  # Verificar existencia
