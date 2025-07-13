@@ -219,7 +219,7 @@ def login_register_page(lang_code, t):
 
 #################################### LOGOS ################################################################################################    
     # Crear contenedor para logos y selector de idioma usando columnas de Streamlit
-    col1, col2, col3, col4, col5 = st.columns([0.25, 0.25, 0.45, 1, 1])
+    col1, col2, col3, col4, col5 = st.columns([0.25, 0.25, 0.20, 1, 1])
     
     with col1:
         # Logo de AIdeaText
