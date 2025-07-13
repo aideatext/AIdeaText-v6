@@ -216,13 +216,14 @@ def login_register_page(lang_code, t):
         }
     </style>
     """, unsafe_allow_html=True)
-    
+
+#################################### LOGOS ################################################################################################    
     # Crear contenedor para logos y selector de idioma usando columnas de Streamlit
     col1, col2, col3, col4, col5 = st.columns([0.25, 0.25, 1, 1, 1])
     
     with col1:
         # Logo de NVIDIA
-        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/socialmedia/nvidia/nvidia-inception-program-badge-rgb-for-screen.png", width=100)
+        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/socialmedia/nvidia/nvidia-inception-program-badge-rgb-for-screen.png", width=300)
     
     with col2:
         # Logo de ALPHA
