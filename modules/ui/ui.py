@@ -231,7 +231,7 @@ def login_register_page(lang_code, t):
     
     with col3:
         # Logo de NVIDIA
-        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/socialmedia/nvidia/nvidia-inception-program-badge-rgb-for-screen.png", width=100)
+        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/socialmedia/nvidia/nvidia-inception-program-badge-rgb-for-screen.png", width=300)
    
     with col5:
         # Selector de idioma
