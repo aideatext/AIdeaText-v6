@@ -448,3 +448,35 @@ __all__ = ['main', 'login_register_page', 'initialize_session_state']
 # Bloque de ejecución condicional
 if __name__ == "__main__":
     main()
+
+
+#############################################################
+#############################################################
+
+st.markdown("""
+<style>
+/* Pie de página fijo */
+footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: #f0f2f6;
+    color: #4f4f4f;
+    text-align: center;
+    padding: 10px;
+    font-size: 12px;
+    border-top: 1px solid #e6e6e6;
+    z-index: 100;
+}
+
+/* Espacio adicional al final de la app para no tapar contenido */
+.main > div {
+    padding-bottom: 60px;
+}
+</style>
+
+<footer>
+    © 2025 NVIDIA, the NVIDIA logo, and AIdeaText, ALPHA are trademarks and/or registered trademarks of NVIDIA Corporation in the U.S. and other countries.
+</footer>
+""", unsafe_allow_html=True)
