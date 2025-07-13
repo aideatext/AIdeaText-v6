@@ -222,17 +222,17 @@ def login_register_page(lang_code, t):
     col1, col2, col3, col4, col5 = st.columns([0.25, 0.25, 0.25, 1, 1])
     
     with col1:
-        # Logo de NVIDIA
-        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/socialmedia/nvidia/nvidia-inception-program-badge-rgb-for-screen.png", width=160)
-    
+        # Logo de AIdeaText
+        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/AIdeaText_Logo_vectores.png", width=100)
+        
     with col2:
         # Logo de ALPHA
         st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/ALPHA_Startup%20Badges.png", width=100)
     
     with col3:
-        # Logo de AIdeaText
-        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/AIdeaText_Logo_vectores.png", width=100)
-    
+        # Logo de NVIDIA
+        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/socialmedia/nvidia/nvidia-inception-program-badge-rgb-for-screen.png", width=160)
+   
     with col5:
         # Selector de idioma
         selected_lang = st.selectbox(
