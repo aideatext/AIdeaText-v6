@@ -453,10 +453,9 @@ if __name__ == "__main__":
 #############################################################
 #############################################################
 
-st.markdown("""
+footer_placeholder.markdown("""
 <style>
-/* Pie de página fijo */
-footer {
+#footer {
     position: fixed;
     bottom: 0;
     left: 0;
@@ -470,13 +469,12 @@ footer {
     z-index: 100;
 }
 
-/* Espacio adicional al final de la app para no tapar contenido */
 .main > div {
     padding-bottom: 60px;
 }
 </style>
 
-<footer>
+<div id="footer">
     © 2025 NVIDIA, the NVIDIA logo, and AIdeaText, ALPHA are trademarks and/or registered trademarks of NVIDIA Corporation in the U.S. and other countries.
-</footer>
+</div>
 """, unsafe_allow_html=True)
