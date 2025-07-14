@@ -118,16 +118,13 @@ def show_carousel():
                     st.session_state.current_event = (current_idx + 1) % len(eventos)
                     st.rerun()
             
-            # Indicadores de posición
+            # Indicadores de posición (solo visuales, no botones)
             st.markdown("<div class='carousel-nav'>", unsafe_allow_html=True)
-            cols = st.columns(len(eventos))
-            for i, col in enumerate(cols):
-                with col:
-                    if st.button("•", key=f"carousel_dot_{i}"):
-                        st.session_state.current_event = i
-                        st.rerun()
+            for i in range(len(eventos)):
+                active_class = "carousel-dot active" if i == current_idx else "carousel-dot"
+                st.markdown(f"<span class='{active_class}'></span>", unsafe_allow_html=True)
             st.markdown("</div>", unsafe_allow_html=True)
-            
+                        
     except Exception as e:
         st.error(f"Error al mostrar el carrusel: {str(e)}")
         logger.error(f"Error en show_carousel: {str(e)}")
