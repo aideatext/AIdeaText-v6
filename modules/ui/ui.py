@@ -246,7 +246,7 @@ def login_register_page(lang_code, t):
 #################################### LOGOS ################################################################################################    
     # Crear contenedor para logos y selector de idioma usando columnas de Streamlit
 
-    col1, col2, col3, col4, col5 = st.columns([0.25, 0.25, 0.50, 0.50, 0.50])
+    col1, col2, col3, col4, col5 = st.columns([0.25, 0.25, 0.25, 0.25, 0.50])
     
     with col1:
         # Logo de AIdeaText
@@ -258,11 +258,11 @@ def login_register_page(lang_code, t):
     
     with col3:
         # Logo de NVIDIA
-        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/socialmedia/nvidia/nvidia-inception-program-badge-rgb-for-screen.png", width=150)
+        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/socialmedia/nvidia/nvidia-inception-program-badge-rgb-for-screen.png", width=100)
     
     with col4:
         # Logo de F6S (nuevo logo)
-        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/socialmedia/F6/F6S_Top_Company_EdTech_27.png", width=150)
+        st.image("https://huggingface.co/spaces/AIdeaText/v5Prod/resolve/main/assets/img/socialmedia/F6/F6S_Top_Company_EdTech_27.png", width=100)
     
     with col5:
         # Selector de idioma
