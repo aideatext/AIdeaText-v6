@@ -69,3 +69,4 @@ assets/img/socialmedia/WebSummit[[:space:]]ShowCase[[:space:]]2025.png filter=lf
 assets/img/WebSummit[[:space:]]ShowCase[[:space:]]2025.png filter=lfs diff=lfs merge=lfs -text
 assets/img/socialmedia/image_pycon_2024.png filter=lfs diff=lfs merge=lfs -text
 assets/img/socialmedia/WebSummit_ShowCase_2025.png filter=lfs diff=lfs merge=lfs -text
+pitchDeck-2025/AIdeaText-EDU_PitchDeck_English_minV_sep-2025.pptx filter=lfs diff=lfs merge=lfs -text
