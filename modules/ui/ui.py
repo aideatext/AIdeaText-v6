@@ -60,15 +60,21 @@ st.markdown("""
 eventos = [
     {
         "imagen": "assets/img/socialmedia/WebSummit_ShowCase_2025.png",
-        "titulo": "WebSummitRio 2025, Brasil, april, 27-30",
+        "titulo": "WebSummitRio 2025, Rio, Brasil, april, 27-30",
         "descripcion": "AIdeaText showcase"
     },
     
     {
         "imagen": "assets/img/socialmedia/image_pycon_2024.png",
-        "titulo": "PyCon 2024, Colombia, june, 7-9",
+        "titulo": "PyCon 2024, Medellin, Colombia, june, 7-9",
         "descripcion": "AIdeaText showcase"
-    }
+    },
+
+    {
+        "imagen": "assets/img/socialmedia/_MG_2845.JPG",
+        "titulo": "MakerFaire 2024, Mexico City, Mexico, octuber, 12-13",
+        "descripcion": "AIdeaText showcase"
+    }    
 ]
 
 def initialize_carousel_state():
