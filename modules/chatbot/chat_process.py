@@ -117,7 +117,7 @@ class ChatProcessor:
 
             # Llamar a Claude con streaming
             with self.client.messages.stream(
-                model="claude-3-sonnet-20240229",
+                model="claude-sonnet-4-5-20250929",
                 max_tokens=4000,
                 temperature=0.7,
                 system=self._get_system_prompt(),
