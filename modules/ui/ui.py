@@ -283,7 +283,36 @@ def login_register_page(lang_code, t):
         
     </style>
     """, unsafe_allow_html=True)
+####################################################################################################################################    
 
+    # Pie de página legal (debe ir al final de la función)
+    footer_placeholder = st.empty()
+    footer_placeholder.markdown("""
+    <style>
+    #footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: #f0f2f6;
+        color: #4f4f4f;
+        text-align: center;
+        padding: 10px;
+        font-size: 12px;
+        border-top: 1px solid #e6e6e6;
+        z-index: 100;
+    }
+    .main > div {
+        padding-bottom: 60px;
+    }
+    </style>
+
+    <div id="footer">
+        © 2025 NVIDIA, the NVIDIA logo are trademarks and/or registered trademarks of NVIDIA Corporation in the U.S. and other countries.
+    </div>
+    """, unsafe_allow_html=True)
+
+#################################### LOGOS ################################################################################################ 
     # ============================================
     # [1] LOGO AIdeaText CENTRADO - UNA SOLA FILA
     # ============================================
