@@ -544,62 +544,124 @@ def display_videos_and_info(lang_code, landing_t):
     </style>
     """, unsafe_allow_html=True)
 
-    # ============================================
-    # TAB 1: 👥 ABOUT US - REORGANIZADO
-    # ============================================
-    with tab_about:
-        # NO repetir "About Us" - el tab ya lo dice
-        about_texts = {
-            'en': """
-            <div class="content-text">
-            
-            <div class="principle-box">
-            AIdeaText has this fundamental principle:<br>
-            <strong>"The real transformation happens when we stop grading what students produce and start assessing how they think."</strong>
+# ============================================
+# TAB 1: 👥 ABOUT US - SIMPLIFICADO CON DESPLEGABLES
+# ============================================
+with tab_about:
+    # NO repetir "About Us" - el tab ya lo dice
+    
+    about_texts = {
+        'en': """
+        <div class="content-text">
+        
+        <div class="principle-box">
+        AIdeaText has this fundamental principle:<br>
+        <strong>"The real transformation happens when we stop grading what students produce and start assessing how they think."</strong>
+        </div>
+        
+        <details class="about-details">
+            <summary class="about-summary">
+                <strong>Our Mission & Vision</strong>
+            </summary>
+            <div class="about-content">
+            <p><strong>🎯 Mission:</strong> To transform how the world measures and develops critical thinking.</p>
+            <p><strong>🌍 Vision:</strong> To be the global standard for cognitive development assessment.</p>
+            <p>We bridge the gap between educational training and business needs by implementing 
+            cognitive development measurement systems based on advanced natural language processing.</p>
             </div>
-            
-            <div class="mission-vision-container">
-                <div class="mission-box">
-                    <h4 style='color: #10B981; margin-top: 0;'>🎯 Our Mission</h4>
-                    <p><strong>To transform how the world measures and develops critical thinking.</strong></p>
-                    <p>We bridge the gap between educational training and business needs by implementing 
-                    cognitive development measurement systems based on advanced natural language processing.</p>
-                </div>
-                
-                <div class="vision-box">
-                    <h4 style='color: #8B5CF6; margin-top: 0;'>🌍 Our Vision</h4>
-                    <p><strong>To be the global standard for cognitive development assessment.</strong></p>
-                    <p>Establishing Semantic Reasoning Graphs as the benchmark for evaluating and enhancing 
-                    critical thinking skills worldwide.</p>
-                </div>
-            </div>
-            
-            <div class="highlight-box">
-            <strong>Who We Are</strong><br>
-            AIdeaText is a digital technology company for human cognitive development based in Mexico. 
+        </details>
+        
+        <details class="about-details">
+            <summary class="about-summary">
+                <strong>Who We Are</strong>
+            </summary>
+            <div class="about-content">
+            <p>AIdeaText is a digital technology company for human cognitive development based in Mexico. 
             Our solution has its core business in <strong>Semantic Reasoning Graphs (SRGs)</strong>, a technological 
             configuration that makes the critical thinking process visible, connecting educational 
             training with business needs by implementing a cognitive development measurement system 
-            based on advanced natural language processing.
+            based on advanced natural language processing.</p>
             </div>
-            
-            <div class="section-title">Validation & Stage</div>
-            We have been validated by the <strong>NVIDIA Inception</strong> program for emerging companies and are in 
-            an advanced development stage with a <a href="https://youtu.be/_4WMufl6MTA" target="_blank">functional MVP Demo</a> 
-            and a scalable <a href="https://youtu.be/Nt7IEas_P54" target="_blank">business model</a> 
-            in Latin America.
-            
-            <div class="section-title">Key Differentiators</div>
+        </details>
+        
+        <details class="about-details">
+            <summary class="about-summary">
+                <strong>Validation & Stage</strong>
+            </summary>
+            <div class="about-content">
+            <p>We have been validated by the <strong>NVIDIA Inception</strong> program for emerging companies and are in 
+            an advanced development stage with:</p>
+            • <a href="https://youtu.be/_4WMufl6MTA" target="_blank">Functional MVP Demo</a><br>
+            • <a href="https://youtu.be/Nt7IEas_P54" target="_blank">Scalable business model</a> in Latin America
+            </div>
+        </details>
+        
+        <details class="about-details">
+            <summary class="about-summary">
+                <strong>Key Differentiators</strong>
+            </summary>
+            <div class="about-content">
             • <strong>First cognitive development measurement system</strong> based on NLP<br>
             • <strong>Semantic Reasoning Graphs</strong> make thinking visible<br>
             • <strong>Validated by NVIDIA</strong> Inception Program<br>
             • <strong>Scalable model</strong> for Latin American education market<br>
-            • <strong>Proven technology</strong> with functional MVP
-            """
-        }
+            • <strong>Proven technology</strong> with functional MVP<br>
+            • <strong>Connects education</strong> with business needs
+            </div>
+        </details>
         
-        about_content = about_texts.get(lang_code, about_texts['en'])
-        st.markdown(about_content, unsafe_allow_html=True)
+        </div>
+        """
+    }
+    
+    # Agregar estilos para los desplegables de About Us
+    st.markdown("""
+    <style>
+    .about-details {
+        margin-bottom: 10px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 5px;
+    }
+    
+    .about-summary {
+        padding: 12px 15px;
+        background-color: #f8f9fa;
+        cursor: pointer;
+        font-weight: 500;
+        border-radius: 6px;
+        transition: background-color 0.3s;
+    }
+    
+    .about-summary:hover {
+        background-color: #e9ecef;
+    }
+    
+    .about-content {
+        padding: 15px;
+        background-color: white;
+        border-top: 1px solid #e0e0e0;
+        border-radius: 0 0 8px 8px;
+    }
+    
+    .about-content p {
+        margin-bottom: 10px;
+    }
+    
+    .principle-box {
+        background-color: #FEF3C7;
+        border-left: 4px solid #F59E0B;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 0 8px 8px 0;
+        font-weight: 600;
+        text-align: center;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    about_content = about_texts.get(lang_code, about_texts['en'])
+    st.markdown(about_content, unsafe_allow_html=True)
         
     # ============================================
     # TAB 2: 🏆 CURRENT PROGRAMS
