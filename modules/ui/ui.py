@@ -60,19 +60,19 @@ st.markdown("""
 eventos = [
     {
         "imagen": "assets/img/socialmedia/WebSummit_ShowCase_2025.png",
-        "titulo": "WebSummitRio 2025, Rio, Brasil, april, 27-30",
+        "titulo": "WebSummitRio 2025, Rio, Brazil, April 27-30",
         "descripcion": "AIdeaText showcase"
     },
     
     {
         "imagen": "assets/img/socialmedia/image_pycon_2024.png",
-        "titulo": "PyCon 2024, Medellin, Colombia, june, 7-9",
+        "titulo": "PyCon 2024, Medellin, Colombia, June 7-9",
         "descripcion": "AIdeaText showcase"
     },
 
     {
         "imagen": "assets/img/socialmedia/_MG_2845.JPG",
-        "titulo": "MakerFaire 2024, Mexico City, Mexico, octuber, 12-13",
+        "titulo": "MakerFaire 2024, Mexico City, Mexico, October 12-13",
         "descripcion": "AIdeaText showcase"
     }    
 ]
@@ -116,7 +116,7 @@ def show_carousel():
                 img = Image.open(event["imagen"]) if isinstance(event["imagen"], str) else event["imagen"]
                 st.image(
                     img,
-                    use_container_width=True,  # <-- Cambio realizado aquí
+                    use_container_width=True,
                     caption=f"{event['titulo']} - {event['descripcion']}"
                 )
             
@@ -169,6 +169,10 @@ def main():
         st.error("Los modelos NLP no están inicializados. Por favor, reinicie la aplicación.")
         return
 
+    # [1] CONFIGURAR INGLÉS COMO IDIOMA POR DEFECTO
+    if 'lang_code' not in st.session_state:
+        st.session_state.lang_code = 'en'  # Inglés por defecto
+    
     lang_code = st.session_state.get('lang_code', 'en')
     t = get_translations(lang_code)
 
@@ -305,7 +309,7 @@ def login_register_page(lang_code, t):
         st.markdown("""
         <div class="start-container">
             <h3 style='margin: 0;'>
-                🚀 Comienza en 
+                🚀 Start in 
                 <span class="language-inline">
         """, unsafe_allow_html=True)
         
@@ -313,7 +317,7 @@ def login_register_page(lang_code, t):
         selected_lang = st.selectbox(
             "",
             list(languages.keys()),
-            index=list(languages.keys()).index('English'),  # [3.2] Inglés por defecto
+            index=list(languages.keys()).index('English'),  # Inglés seleccionado por defecto
             label_visibility="collapsed",
             key="landing_language_selector"
         )
@@ -375,31 +379,31 @@ def register_form(lang_code, landing_t):
     
     # Verificar si acabamos de registrar exitosamente
     if 'just_registered' in st.session_state and st.session_state.just_registered:
-        st.success("✅ ¡Registro exitoso! Tu solicitud ha sido enviada.")
-        st.info("Por favor revisa tu correo para más instrucciones.")
+        st.success("✅ Registration successful! Your request has been sent.")
+        st.info("Please check your email for further instructions.")
         
         # Botón para limpiar y empezar de nuevo
-        if st.button("Hacer otro registro"):
+        if st.button("Register another user"):
             del st.session_state.just_registered
             st.rerun()
         return
     
     # Solo 3 campos requeridos
-    name = st.text_input("Nombre completo *", key="reg_name")
-    email = st.text_input("Correo institucional *", key="reg_email") 
-    institution = st.text_input("Institución educativa *", key="reg_institution")
+    name = st.text_input("Full name *", key="reg_name")
+    email = st.text_input("Institutional email *", key="reg_email") 
+    institution = st.text_input("Educational institution *", key="reg_institution")
     
     # Botón simplificado
     if st.button(landing_t['submit_application'], type="primary"):
-        logger.info(f"Intentando enviar solicitud para {email}")
+        logger.info(f"Trying to send request for {email}")
         
         # Validaciones básicas
         if not name or not email or not institution:
-            st.error("Por favor completa los campos obligatorios (*)")
+            st.error("Please complete all required fields (*)")
             return
         
         if not is_institutional_email(email):
-            st.error("Por favor usa un correo institucional (no gmail, hotmail, etc.)")
+            st.error("Please use an institutional email (not gmail, hotmail, etc.)")
             return
         
         # Enviar solicitud
@@ -408,18 +412,18 @@ def register_form(lang_code, landing_t):
             lastname="",
             email=email,
             institution=institution,
-            current_role="Estudiante",
-            desired_role="Estudiante",  
-            reason="Nuevo registro"
+            current_role="Student",
+            desired_role="Student",  
+            reason="New registration"
         )
         
         if success:
             # Marcar que acabamos de registrar
             st.session_state.just_registered = True
-            logger.info(f"Solicitud almacenada exitosamente para {email}")
+            logger.info(f"Request successfully stored for {email}")
             
             # Mostrar mensaje y recargar
-            st.success("✅ ¡Tu solicitud ha sido enviada! Recibirás un correo con instrucciones.")
+            st.success("✅ Your request has been sent! You will receive an email with instructions.")
             st.balloons()
             
             # Recargar después de 2 segundos
@@ -427,8 +431,8 @@ def register_form(lang_code, landing_t):
             time.sleep(2)
             st.rerun()
         else:
-            st.error("❌ Hubo un error al enviar tu solicitud. Por favor, inténtalo de nuevo.")
-            logger.error(f"Error al almacenar solicitud para {email}")
+            st.error("❌ There was an error sending your request. Please try again.")
+            logger.error(f"Error storing request for {email}")
 
 
 #############################################################
@@ -491,6 +495,43 @@ def display_videos_and_info(lang_code, landing_t):
             margin: 15px 0;
             border-radius: 0 5px 5px 0;
         }
+        .quote-box {
+            background-color: #F0F9FF;
+            border-left: 4px solid #0EA5E9;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+            font-size: 1.1em;
+            color: #0369A1;
+        }
+        .principle-box {
+            background-color: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            font-weight: 600;
+        }
+        .mission-vision-container {
+            display: flex;
+            gap: 20px;
+            margin: 25px 0;
+        }
+        .mission-box, .vision-box {
+            flex: 1;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .mission-box {
+            background-color: #F0FDF4;
+            border-top: 4px solid #10B981;
+        }
+        .vision-box {
+            background-color: #F5F3FF;
+            border-top: 4px solid #8B5CF6;
+        }
         .logo-grid {
             display: flex;
             align-items: center;
@@ -504,15 +545,38 @@ def display_videos_and_info(lang_code, landing_t):
     """, unsafe_allow_html=True)
 
     # ============================================
-    # TAB 1: 👥 ABOUT US
+    # TAB 1: 👥 ABOUT US - REORGANIZADO
     # ============================================
     with tab_about:
         # NO repetir "About Us" - el tab ya lo dice
         about_texts = {
             'en': """
             <div class="content-text">
+            
+            <div class="principle-box">
+            AIdeaText has this fundamental principle:<br>
+            <strong>"The real transformation happens when we stop grading what students produce and start assessing how they think."</strong>
+            </div>
+            
+            <div class="mission-vision-container">
+                <div class="mission-box">
+                    <h4 style='color: #10B981; margin-top: 0;'>🎯 Our Mission</h4>
+                    <p><strong>To transform how the world measures and develops critical thinking.</strong></p>
+                    <p>We bridge the gap between educational training and business needs by implementing 
+                    cognitive development measurement systems based on advanced natural language processing.</p>
+                </div>
+                
+                <div class="vision-box">
+                    <h4 style='color: #8B5CF6; margin-top: 0;'>🌍 Our Vision</h4>
+                    <p><strong>To be the global standard for cognitive development assessment.</strong></p>
+                    <p>Establishing Semantic Reasoning Graphs as the benchmark for evaluating and enhancing 
+                    critical thinking skills worldwide.</p>
+                </div>
+            </div>
+            
             <div class="highlight-box">
-            <strong>AIdeaText</strong> is a digital technology company for human cognitive development based in Mexico. 
+            <strong>Who We Are</strong><br>
+            AIdeaText is a digital technology company for human cognitive development based in Mexico. 
             Our solution has its core business in <strong>Semantic Reasoning Graphs (SRGs)</strong>, a technological 
             configuration that makes the critical thinking process visible, connecting educational 
             training with business needs by implementing a cognitive development measurement system 
@@ -521,19 +585,16 @@ def display_videos_and_info(lang_code, landing_t):
             
             <div class="section-title">Validation & Stage</div>
             We have been validated by the <strong>NVIDIA Inception</strong> program for emerging companies and are in 
-            an advanced development stage with a <a href="https://youtu.be/_4WMufl6MTA" target="_blank">functional MVP Demo</a><br> and a scalable <a href="https://youtu.be/Nt7IEas_P54" target="_blank"> business model</a> 
+            an advanced development stage with a <a href="https://youtu.be/_4WMufl6MTA" target="_blank">functional MVP Demo</a> 
+            and a scalable <a href="https://youtu.be/Nt7IEas_P54" target="_blank">business model</a> 
             in Latin America.
-            
-            <div class="section-title">Mission & Vision</div>
-            <em>The real transformation happens when we stop grading what students produce and start assessing how they think. <em>
-            <strong>Mission:</strong> To transform how the world measures and develops critical thinking.<br>
-            <strong>Vision:</strong> To be the global standard for cognitive development assessment.
             
             <div class="section-title">Key Differentiators</div>
             • <strong>First cognitive development measurement system</strong> based on NLP<br>
             • <strong>Semantic Reasoning Graphs</strong> make thinking visible<br>
             • <strong>Validated by NVIDIA</strong> Inception Program<br>
-            • <strong>Scalable model</strong> for Latin American education market
+            • <strong>Scalable model</strong> for Latin American education market<br>
+            • <strong>Proven technology</strong> with functional MVP
             """
         }
         
@@ -704,11 +765,11 @@ def display_videos_and_info(lang_code, landing_t):
         
         use_case_videos = {
             "📊 Semantic Analysis Example in portuguese ": "https://youtu.be/_4WMufl6MTA",
-            "💻 Firs Demo - Standalone version ": "https://www.youtube.com/watch?v=nP6eXbog-ZY"
+            "💻 First Demo - Standalone version ": "https://www.youtube.com/watch?v=nP6eXbog-ZY"
         }
         
         selected_title = st.selectbox(
-            "Select demonstration:" if lang_code == 'en' else "Selecciona demostración:", 
+            "Select demonstration:",
             list(use_case_videos.keys())
         )
         
@@ -722,7 +783,7 @@ def display_videos_and_info(lang_code, landing_t):
                     light=True
                 )
             except Exception as e:
-                st.error(f"Error loading video: {str(e)}" if lang_code == 'en' else f"Error al cargar el video: {str(e)}")
+                st.error(f"Error loading video: {str(e)}")
         
         # Información adicional sobre casos de uso
         st.markdown("""
@@ -762,16 +823,16 @@ def display_videos_and_info(lang_code, landing_t):
         """, unsafe_allow_html=True)
         
         videos = {
-            "🎬 Pitch - PotencIA MX - ": "https://youtu.be/Nt7IEas_P54",
-            "🏆 Conference - SENDA UNAM ": "https://www.youtube.com/watch?v=XFLvjST2cE0",        
-            "🐍 Conferente - PyCon 2024 ": "https://www.youtube.com/watch?v=Jn545-IKx5Q",
-            "👨‍🏫 Conference - Ser Maaestro Foundation ": "https://www.youtube.com/watch?v=imc4TI1q164",
-            "🚀 Pitch - Explora - IFE - TEC de Monterrey ": "https://www.youtube.com/watch?v=Fqi4Di_Rj_s",
-            "🎙️ Interview with Dr. Guillermo Ruíz ": "https://www.youtube.com/watch?v=_ch8cRja3oc"
+            "🎬 Pitch - PotencIA MX": "https://youtu.be/Nt7IEas_P54",
+            "🏆 Conference - SENDA UNAM": "https://www.youtube.com/watch?v=XFLvjST2cE0",        
+            "🐍 Conference - PyCon 2024": "https://www.youtube.com/watch?v=Jn545-IKx5Q",
+            "👨‍🏫 Conference - Ser Maestro Foundation": "https://www.youtube.com/watch?v=imc4TI1q164",
+            "🚀 Pitch - Explora - IFE - TEC de Monterrey": "https://www.youtube.com/watch?v=Fqi4Di_Rj_s",
+            "🎙️ Interview with Dr. Guillermo Ruíz": "https://www.youtube.com/watch?v=_ch8cRja3oc"
         }
 
         selected_title = st.selectbox(
-            "Select video:" if lang_code == 'en' else "Selecciona video:", 
+            "Select video:",
             list(videos.keys())
         )
         
@@ -785,7 +846,7 @@ def display_videos_and_info(lang_code, landing_t):
                     light=True
                 )
             except Exception as e:
-                st.error(f"Error loading video: {str(e)}" if lang_code == 'en' else f"Error al cargar el video: {str(e)}")
+                st.error(f"Error loading video: {str(e)}")
         
         # Próximos eventos
         st.markdown("""
@@ -793,7 +854,7 @@ def display_videos_and_info(lang_code, landing_t):
         <div class="section-title">Upcoming Events</div>
         
         <strong>Confirmed next events for 2026</strong>
-        • <strong>Stay in touch<br>
+        • <strong>Stay in touch</strong><br>
         
         <em>Confirmed participation in showcases and panels.</em>
         </div>
