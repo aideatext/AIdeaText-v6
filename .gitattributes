@@ -72,3 +72,4 @@ assets/img/socialmedia/WebSummit_ShowCase_2025.png filter=lfs diff=lfs merge=lfs
 pitchDeck-2025/AIdeaText-EDU_PitchDeck_English_minV_sep-2025.pptx filter=lfs diff=lfs merge=lfs -text
 assets/img/socialmedia/_MG_2585_v1.png filter=lfs diff=lfs merge=lfs -text
 assets/img/AIdeaText_Asesoria.jpg filter=lfs diff=lfs merge=lfs -text
+assets/img/AIdeaText_Asesoria.png filter=lfs diff=lfs merge=lfs -text
