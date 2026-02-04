@@ -752,35 +752,6 @@ def display_videos_and_info(lang_code, landing_t):
         
         competitions_text = {
             'en': """
-            <div class="content-text">
-            <div class="highlight-box">
-            Competing for <strong>$950K USD</strong> in prizes across multiple prestigious competitions.
-            </div>
-            
-            <details class="competition-details">
-                <summary class="competition-summary">
-                    <strong>NVIDIA Inception Demo Pitch – GTC 2026</strong> - March 16–19 in San Jose, California
-                </summary>
-                <div class="competition-content">
-                <p>This is a unique opportunity for startups leveraging NVIDIA technologies in innovative ways to showcase their work. 
-                By completing the form below, you'll be considered to present a live, 5-minute demo or pitch at GTC, 
-                highlighting your startup's progress and how NVIDIA technology is accelerating your success.</p>
-                <p>More info: https://www.nvidia.com/gtc/?ncid=GTC-NV7HIY70L</p>
-                </div>
-            </details>
-            
-            <details class="competition-details">
-                <summary class="competition-summary">
-                    <strong>Kaggle/Google Tunix Hackathon</strong> - Explainable AI Models
-                </summary>
-                <div class="competition-content">
-                <p>Most open-source or open-weight language models can give you an answer. But they typically don't 'show their work' 
-                - the steps they went through to arrive at that conclusion in a consistent manner. Here, you'll use Tunix, 
-                Google's new JAX-native library for LLM post-training, to train a model to show its work by laying out a 
-                reasoning trace before landing on an answer.</p>
-                <p>More info: https://kaggle.com/competitions/google-tunix-hackathon</p>
-                </div>
-            </details>
             
             <details class="competition-details">
                 <summary class="competition-summary">
