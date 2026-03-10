@@ -47,7 +47,7 @@ def store_student_semantic_live_result(username, text, analysis_result, lang_cod
         # 3. Preparar documento (CORREGIDO)
         analysis_document = {
             'username': username,
-            'timestamp': datetime.now(timezone.utc), # Mejor práctica
+            'timestamp': datetime.now(timezone.utc),, # Mejor práctica
             'text': text[:50000],
             'analysis_type': 'semantic_live',
             'language': lang_code,

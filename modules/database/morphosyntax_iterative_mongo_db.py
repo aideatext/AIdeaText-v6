@@ -16,7 +16,7 @@ def store_student_morphosyntax_base(username, text, arc_diagrams):
     try:
         base_document = {
             'username': username,
-            'timestamp': datetime.now(timezone.utc) # Mejor práctica
+            'timestamp': datetime.now(timezone.utc), # Mejor práctica
             'text': text,
             'arc_diagrams': arc_diagrams,
             'analysis_type': 'morphosyntax_base',
@@ -46,7 +46,7 @@ def store_student_morphosyntax_iteration(username, base_id, original_text, itera
         iteration_document = {
             'username': username,
             'base_id': base_id,  # Guardar el ObjectId en la iteración
-            'timestamp': datetime.now(timezone.utc) # Mejor práctica
+            'timestamp': datetime.now(timezone.utc), # Mejor práctica
             'original_text': original_text,
             'iteration_text': iteration_text,
             'arc_diagrams': arc_diagrams,

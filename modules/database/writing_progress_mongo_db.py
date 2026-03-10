@@ -21,7 +21,7 @@ def store_writing_baseline(username, metrics, text):
             'type': 'baseline',
             'metrics': metrics,
             'text': text,
-            'timestamp': datetime.now(timezone.utc) # Mejor práctica
+            'timestamp': datetime.now(timezone.utc), # Mejor práctica
             'iteration': 0  # Línea base siempre es iteración 0
         }
         
@@ -70,7 +70,7 @@ def store_writing_progress(username, metrics, text):
             'type': 'progress',
             'metrics': metrics,
             'text': text,
-            'timestamp': datetime.now(timezone.utc) # Mejor práctica
+            'timestamp': datetime.now(timezone.utc), # Mejor práctica
             'iteration': next_iteration
         }
         

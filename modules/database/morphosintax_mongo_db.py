@@ -11,7 +11,7 @@ COLLECTION_NAME = 'student_morphosyntax_analysis'
 def store_student_morphosyntax_result(username, text, arc_diagrams):
     analysis_document = {
         'username': username,
-        'timestamp': datetime.now(timezone.utc), # Mejor práctica
+        'timestamp': datetime.now(timezone.utc),, # Mejor práctica
         'text': text,
         'arc_diagrams': arc_diagrams,
         'analysis_type': 'morphosyntax'

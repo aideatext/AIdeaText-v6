@@ -26,7 +26,7 @@ def store_current_situation_result(username, text, metrics, feedback):
         # Crear documento
         document = {
             'username': username,
-            'timestamp': datetime.now(timezone.utc) # Mejor práctica
+            'timestamp': datetime.now(timezone.utc), # Mejor práctica
             'text': text,
             'metrics': metrics,
             'feedback': feedback or {},

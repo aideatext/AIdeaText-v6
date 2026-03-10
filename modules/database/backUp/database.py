@@ -57,7 +57,7 @@ def store_chat_history_v3(username, messages, analysis_type):
 
         chat_document = {
             'username': username,
-            'timestamp': datetime.now(timezone.utc) # Mejor práctica
+            'timestamp': datetime.now(timezone.utc), # Mejor práctica
             'analysis_type': analysis_type,
             'messages': messages
         }
@@ -141,7 +141,7 @@ def store_morphosyntax_result(username, text, repeated_words, arc_diagrams, pos_
 
         analysis_document = {
             'username': username,
-            'timestamp': datetime.now(timezone.utc) # Mejor práctica
+            'timestamp': datetime.now(timezone.utc), # Mejor práctica
             'text': text,
             'repeated_words': repeated_words,
             'word_count': word_count,

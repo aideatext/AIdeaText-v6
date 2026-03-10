@@ -191,7 +191,7 @@ def manage_file_contents(username, file_name, analysis_type, file_contents=None)
                 'file_name': file_name,
                 'analysis_type': analysis_type,
                 'file_contents': file_contents,
-                'timestamp': datetime.now(timezone.utc).isoformat()
+                'timestamp': datetime.now(timezone.utc),.isoformat()
             }
             user_container.upsert_item(body=document, partition_key=username)
             logger.info(f"Contenido del archivo guardado/actualizado para el usuario: {username}, tipo de análisis: {analysis_type}")
