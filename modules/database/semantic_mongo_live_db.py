@@ -5,6 +5,7 @@ import io
 import base64
 from datetime import datetime, timezone
 from pymongo.errors import PyMongoError
+from PIL import Image
 
 # Importaciones de terceros
 import matplotlib.pyplot as plt
@@ -27,63 +28,76 @@ COLLECTION_NAME = 'student_semantic_live_analysis'
 
 def store_student_semantic_live_result(username, text, analysis_result, lang_code='en'):
     """
-    Versión corregida con:
-    - Verificación correcta de colección
-    - Manejo de proyección alternativo
-    - Mejor manejo de errores
+    Versión optimizada:
+    - Elimina redundancias en el procesamiento de bytes.
+    - Soluciona el error 413 (RequestEntityTooLarge) mediante compresión JPEG.
+    - Manejo de fechas nativo para MongoDB.
     """
     try:
-        # 1. Obtener colección con verificación correcta
-        collection = get_collection(COLLECTION_NAME)
-        if collection is None:  # Cambiado de 'if not collection'
-            logger.error(f"No se pudo obtener la colección {COLLECTION_NAME}")
-            return False
-
-        # 2. Validación de parámetros
+        # 1. Validación inicial y obtención de colección
         if not all([username, text, analysis_result]):
             logger.error("Parámetros incompletos para guardar análisis")
             return False
 
-        # 3. Preparar documento (CORREGIDO)
+        collection = get_collection(COLLECTION_NAME)
+        if collection is None:
+            logger.error(f"No se pudo obtener la colección {COLLECTION_NAME}")
+            return False
+
+        # 2. Procesamiento y Optimización del Gráfico (Sin redundancias)
+        graph_data = analysis_result.get('concept_graph')
+        final_graph_bytes = None
+
+        if graph_data:
+            try:
+                # Convertir a bytes si viene en base64 (string)
+                if isinstance(graph_data, str):
+                    final_graph_bytes = base64.b64decode(graph_data)
+                else:
+                    final_graph_bytes = graph_data
+
+                # Optimización de tamaño para evitar error 413 en Azure/Mongo
+                # Solo comprimimos si detectamos que existe la imagen
+                img = Image.open(io.BytesIO(final_graph_bytes))
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                output = io.BytesIO()
+                # JPEG al 75% mantiene legibilidad y reduce el peso drásticamente
+                img.save(output, format="JPEG", quality=75, optimize=True)
+                final_graph_bytes = output.getvalue()
+                
+                logger.info(f"Grafo optimizado para {username} ({len(final_graph_bytes)} bytes)")
+            except Exception as e:
+                logger.warning(f"Error optimizando imagen, se usará formato original: {e}")
+                # Si falla la optimización, mantenemos lo que teníamos (si eran bytes)
+                final_graph_bytes = final_graph_bytes if isinstance(final_graph_bytes, bytes) else None
+
+        # 3. Preparación del documento (Directo y limpio)
         analysis_document = {
             'username': username,
-            'timestamp': datetime.now(timezone.utc), # Mejor práctica
-            'text': text[:50000],
+            'timestamp': datetime.now(timezone.utc),
+            'text': text[:50000],  # Límite de seguridad
             'analysis_type': 'semantic_live',
             'language': lang_code,
-            # Extraer datos correctamente del análisis
             'key_concepts': analysis_result.get('key_concepts', []),
             'concept_centrality': analysis_result.get('concept_centrality', {}),
-            'concept_graph': None  # Inicializar como None
+            'concept_graph': final_graph_bytes  # Insertamos los bytes ya procesados
         }
-        
-        # 4. Manejo del gráfico (CORREGIDO)
-        if 'concept_graph' in analysis_result and analysis_result['concept_graph']:
-            try:
-                # Si ya es bytes, usar directamente
-                if isinstance(analysis_result['concept_graph'], bytes):
-                    analysis_document['concept_graph'] = analysis_result['concept_graph']
-                else:
-                    # Convertir a bytes si es necesario
-                    analysis_document['concept_graph'] = base64.b64decode(
-                        analysis_result['concept_graph'])
-            except Exception as e:
-                logger.error(f"Error procesando gráfico: {str(e)}")
 
-        # 5. Insertar documento
+        # 4. Inserción en base de datos
         try:
             result = collection.insert_one(analysis_document)
             if result.inserted_id:
-                logger.info(f"Análisis guardado. ID: {result.inserted_id}")
+                logger.info(f"Análisis guardado exitosamente. ID: {result.inserted_id}")
                 return True
-            logger.error("Inserción fallida - Sin ID devuelto")
             return False
         except PyMongoError as e:
-            logger.error(f"Error de MongoDB: {str(e)}")
+            logger.error(f"Error de inserción en MongoDB: {str(e)}")
             return False
 
     except Exception as e:
-        logger.error(f"Error inesperado: {str(e)}", exc_info=True)
+        logger.error(f"Error inesperado en store_student_semantic_live_result: {str(e)}", exc_info=True)
         return False
 
 ##########################################
