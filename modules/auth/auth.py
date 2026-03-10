@@ -61,7 +61,7 @@ def authenticate_user(username, password):
                 if session_id:
                     st.session_state.session_id = session_id
                     st.session_state.username = username
-                    st.session_state.login_time = datetime.now(timezone.utc).isoformat()
+                    st.session_state.login_time = datetime.now(timezone.utc)
                     logger.info(f"Sesión iniciada: {session_id}")
                 else:
                     logger.warning("No se pudo registrar la sesión")
