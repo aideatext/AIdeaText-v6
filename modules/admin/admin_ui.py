@@ -1,5 +1,3 @@
-#modules/admin/admin_ui.py
-
 import streamlit as st
 
 from datetime import datetime
@@ -135,104 +133,89 @@ def admin_page():
 
 #######################################################################      
     # Tab 3: Actividad de la Plataforma
-    with tab3:
-        st.header("Actividad Reciente")
-        
-        # Agregar botón de actualización
-        if st.button("Actualizar datos", key="refresh_sessions", type="primary"):
-            st.rerun()
-        
-        # Mostrar spinner mientras carga
-        with st.spinner("Cargando datos de sesiones..."):
-            # Obtener sesiones recientes
-            recent_sessions = get_recent_sessions(20)  # Aumentado a 20 para más datos
-        
-        if recent_sessions:
+        with tab3:
+            st.header("Actividad Reciente")
+            
+            # Agregar botón de actualización
+            if st.button("Actualizar datos", key="refresh_sessions", type="primary"):
+                st.rerun()
+            
+            # Mostrar spinner mientras carga
+            with st.spinner("Cargando datos de sesiones..."):
+                # Obtener sesiones recientes
+                recent_sessions = get_recent_sessions(20)
+            
+                if recent_sessions:
                     # Crear dataframe para mostrar los datos
                     sessions_data = []
                     for session in recent_sessions:
-                        # 1. Manejar login_time (ahora es un objeto datetime)
-                        login_val = session.get('loginTime')
-                        if isinstance(login_val, datetime):
-                            # Si ya es un objeto date, solo le damos formato visual
-                            login_time = login_val.strftime("%Y-%m-%d %H:%M:%S")
-                        else:
-                            # Por si acaso queda algún registro viejo en formato string
-                            login_time = str(login_val)
-                        
-                        # 2. Manejar logout_time
-                        logout_val = session.get('logoutTime')
-                        if isinstance(logout_val, datetime):
-                            logout_time = logout_val.strftime("%Y-%m-%d %H:%M:%S")
-                        elif logout_val == "Activo" or not logout_val:
-                            logout_time = "Activo"
-                        else:
-                            logout_time = str(logout_val)
-                    
-                    # Agregar datos a la lista
-                    sessions_data.append({
-                        "Usuario": session.get('username', 'Desconocido'),
-                        "Inicio de Sesión": login_time,
-                        "Fin de Sesión": logout_time,
-                        "Duración": format_duration(session.get('sessionDuration', 0))
-                    })
-                except Exception as e:
-                    st.error(f"Error procesando sesión: {str(e)}")
-                    continue
-            
-            # Mostrar información de depuración si hay problemas
-            with st.expander("Información de depuración", expanded=False):
-                st.write("Datos crudos recuperados:")
-                st.json(recent_sessions)
-                
-                st.write("Datos procesados para mostrar:")
-                st.json(sessions_data)
-            
-            # Mostrar tabla con estilos
-            st.dataframe(
-                sessions_data,
-                hide_index=True,
-                column_config={
-                    "Usuario": st.column_config.TextColumn(
-                        "Usuario",
-                        width="medium"
-                    ),
-                    "Inicio de Sesión": st.column_config.TextColumn(
-                        "Inicio de Sesión",
-                        width="medium"
-                    ),
-                    "Fin de Sesión": st.column_config.TextColumn(
-                        "Fin de Sesión",
-                        width="medium"
-                    ),
-                    "Duración": st.column_config.TextColumn(
-                        "Duración",
-                        width="small"
-                    )
-                }
-            )
-            
-            # Añadir métricas resumen
-            total_sessions = len(sessions_data)
-            total_users = len(set(session['Usuario'] for session in sessions_data))
-            
-            metric_col1, metric_col2 = st.columns(2)
-            with metric_col1:
-                st.metric("Total de Sesiones", total_sessions)
-            with metric_col2:
-                st.metric("Usuarios Únicos", total_users)
-        else:
-            st.info("No hay registros de sesiones recientes o hubo un problema al recuperarlos.")
-            
-            # Ayuda de depuración
-            if st.button("Mostrar diagnóstico"):
-                st.write("Verificando la función get_recent_sessions:")
-                container = get_container("users_sessions")
-                if container:
-                    st.success("✅ Conectado al contenedor users_sessions")
-                else:
-                    st.error("❌ No se pudo conectar al contenedor users_sessions")
+                        try:
+                            # 1. Manejar login_time (ahora es un objeto datetime)
+                            login_val = session.get('loginTime')
+                            if isinstance(login_val, datetime):
+                                login_time = login_val.strftime("%Y-%m-%d %H:%M:%S")
+                            else:
+                                login_time = str(login_val) if login_val else "N/A"
+                            
+                            # 2. Manejar logout_time
+                            logout_val = session.get('logoutTime')
+                            if isinstance(logout_val, datetime):
+                                logout_time = logout_val.strftime("%Y-%m-%d %H:%M:%S")
+                            elif logout_val == "Activo" or not logout_val:
+                                logout_time = "Activo"
+                            else:
+                                logout_time = str(logout_val)
 
+                            # Agregar datos a la lista (dentro del try)
+                            sessions_data.append({
+                                "Usuario": session.get('username', 'Desconocido'),
+                                "Inicio de Sesión": login_time,
+                                "Fin de Sesión": logout_time,
+                                "Duración": format_duration(session.get('sessionDuration', 0))
+                            })
+                        except Exception as e:
+                            st.error(f"Error procesando sesión: {str(e)}")
+                            continue
+                    
+                    # Mostrar información de depuración si hay problemas
+                    with st.expander("Información de depuración", expanded=False):
+                        st.write("Datos crudos recuperados:")
+                        st.json(recent_sessions)
+                        st.write("Datos procesados para mostrar:")
+                        st.json(sessions_data)
+                    
+                    # Mostrar tabla con estilos
+                    st.dataframe(
+                        sessions_data,
+                        hide_index=True,
+                        column_config={
+                            "Usuario": st.column_config.TextColumn("Usuario", width="medium"),
+                            "Inicio de Sesión": st.column_config.TextColumn("Inicio de Sesión", width="medium"),
+                            "Fin de Sesión": st.column_config.TextColumn("Fin de Sesión", width="medium"),
+                            "Duración": st.column_config.TextColumn("Duración", width="small")
+                        }
+                    )
+                    
+                    # Añadir métricas resumen
+                    total_sessions = len(sessions_data)
+                    total_users = len(set(s['Usuario'] for s in sessions_data))
+                    
+                    metric_col1, metric_col2 = st.columns(2)
+                    with metric_col1:
+                        st.metric("Total de Sesiones", total_sessions)
+                    with metric_col2:
+                        st.metric("Usuarios Únicos", total_users)
+                else:
+                    st.info("No hay registros de sesiones recientes.")
+                    
+                    if st.button("Mostrar diagnóstico"):
+                        st.write("Verificando la función get_recent_sessions:")
+                        # Asegúrate de que get_container esté definido o importado
+                        container = get_container("users_sessions")
+                        if container:
+                            st.success("✅ Conectado al contenedor users_sessions")
+                        else:
+                            st.error("❌ No se pudo conectar al contenedor")
 
 #######################################################################      
     # Agregar una línea divisoria antes del botón
