@@ -148,28 +148,26 @@ def admin_page():
             recent_sessions = get_recent_sessions(20)  # Aumentado a 20 para más datos
         
         if recent_sessions:
-            # Crear dataframe para mostrar los datos
-            sessions_data = []
-            for session in recent_sessions:
-                try:
-                    # Manejar el formato de fecha con manejo de excepciones
-                    try:
-                        login_time = datetime.fromisoformat(
-                            session['loginTime'].replace('Z', '+00:00')
-                        ).strftime("%Y-%m-%d %H:%M:%S")
-                    except Exception as e:
-                        login_time = session['loginTime']
-                    
-                    # Manejar el caso de logout_time cuando la sesión está activa
-                    if session.get('logoutTime') and session['logoutTime'] != "Activo":
-                        try:
-                            logout_time = datetime.fromisoformat(
-                                session['logoutTime'].replace('Z', '+00:00')
-                            ).strftime("%Y-%m-%d %H:%M:%S")
-                        except Exception as e:
-                            logout_time = session['logoutTime']
-                    else:
-                        logout_time = "Activo"
+                    # Crear dataframe para mostrar los datos
+                    sessions_data = []
+                    for session in recent_sessions:
+                        # 1. Manejar login_time (ahora es un objeto datetime)
+                        login_val = session.get('loginTime')
+                        if isinstance(login_val, datetime):
+                            # Si ya es un objeto date, solo le damos formato visual
+                            login_time = login_val.strftime("%Y-%m-%d %H:%M:%S")
+                        else:
+                            # Por si acaso queda algún registro viejo en formato string
+                            login_time = str(login_val)
+                        
+                        # 2. Manejar logout_time
+                        logout_val = session.get('logoutTime')
+                        if isinstance(logout_val, datetime):
+                            logout_time = logout_val.strftime("%Y-%m-%d %H:%M:%S")
+                        elif logout_val == "Activo" or not logout_val:
+                            logout_time = "Activo"
+                        else:
+                            logout_time = str(logout_val)
                     
                     # Agregar datos a la lista
                     sessions_data.append({
