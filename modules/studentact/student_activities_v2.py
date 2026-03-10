@@ -33,7 +33,6 @@ logger = logging.getLogger(__name__)
 
 ###################################################################################
 
-
 def display_student_activities(username: str, lang_code: str, t: dict):
     """
     Muestra todas las actividades del estudiante
@@ -76,7 +75,6 @@ def display_student_activities(username: str, lang_code: str, t: dict):
 
 
 ###############################################################################################
-
 def display_semantic_live_activities(username: str, t: dict):
     """Muestra actividades de análisis semántico en vivo (CORREGIDO)"""
     try:
@@ -86,43 +84,50 @@ def display_semantic_live_activities(username: str, t: dict):
             st.info(t.get('no_semantic_live_analyses', 'No hay análisis semánticos en vivo registrados'))
             return
 
-        for analysis in analyses:
+        for i, analysis in enumerate(analyses):
             try:
-                # Manejar formato de fecha (CORREGIDO)
-                if isinstance(analysis['timestamp'], str):
-                    timestamp = datetime.fromisoformat(analysis['timestamp'].replace('Z', '+00:00'))
+                # 1. Manejar formato de fecha (Optimizado para objetos datetime nativos)
+                # Usamos el objeto directamente si ya es datetime, si es string lo convertimos
+                ts_raw = analysis.get('timestamp')
+                if isinstance(ts_raw, datetime):
+                    timestamp = ts_raw
+                elif isinstance(ts_raw, str):
+                    timestamp = datetime.fromisoformat(ts_raw.replace('Z', '+00:00'))
                 else:
-                    timestamp = analysis['timestamp']
+                    timestamp = datetime.now() # Fallback por seguridad
                     
                 formatted_date = timestamp.strftime("%d/%m/%Y %H:%M:%S")
                 
+                # Usamos el ID de MongoDB o el índice como sufijo para asegurar unicidad absoluta
+                unique_id = str(analysis.get('_id', i))
+                
                 with st.expander(f"{t.get('analysis_date', 'Fecha')}: {formatted_date}", expanded=False):
-                    # Mostrar texto (primeros 200 caracteres)
+                    # 2. SOLUCIÓN AL ERROR DE KEY DUPLICADO
+                    # Agregamos 'key' usando generate_unique_key con un sufijo único
                     st.text_area(
-                        "Texto analizado",
-                        value=analysis.get('text', '')[:200] + ("..." if len(analysis.get('text', '')) > 200 else ""),
-                        height=100,
-                        disabled=True
+                        t.get('analyzed_text', 'Texto analizado'),
+                        value=analysis.get('text', '')[:500], # Aumentado un poco para mejor lectura
+                        height=150,
+                        disabled=True,
+                        key=generate_unique_key("sem_live", "text", username, suffix=unique_id)
                     )
                     
-                    # Mostrar gráfico si existe (CORREGIDO)
+                    # 3. Mostrar gráfico si existe
                     if analysis.get('concept_graph'):
                         try:
                             # Manejar diferentes formatos de imagen
-                            if isinstance(analysis['concept_graph'], bytes):
-                                st.image(
-                                    analysis['concept_graph'],
-                                    caption=t.get('concept_network', 'Red de Conceptos'),
-                                    use_container_width=True
-                                )
-                            elif isinstance(analysis['concept_graph'], str):
+                            graph_data = analysis['concept_graph']
+                            if isinstance(graph_data, bytes):
+                                image_to_show = graph_data
+                            elif isinstance(graph_data, str):
                                 # Decodificar si está en base64
-                                image_bytes = base64.b64decode(analysis['concept_graph'])
-                                st.image(
-                                    image_bytes,
-                                    caption=t.get('concept_network', 'Red de Conceptos'),
-                                    use_container_width=True
-                                )
+                                image_to_show = base64.b64decode(graph_data)
+                            
+                            st.image(
+                                image_to_show,
+                                caption=t.get('concept_network', 'Red de Conceptos'),
+                                use_container_width=True # Ajustado según tus logs de advertencia
+                            )
                         except Exception as img_error:
                             logger.error(f"Error procesando gráfico: {str(img_error)}")
                             st.error(t.get('error_loading_graph', 'Error al cargar el gráfico'))
@@ -139,7 +144,7 @@ def display_semantic_live_activities(username: str, t: dict):
 ###############################################################################################
 
 def display_semantic_activities(username: str, t: dict):
-    """Muestra actividades de análisis semántico"""
+    """Muestra actividades de análisis semántico (ACTUALIZADO)"""
     try:
         logger.info(f"Recuperando análisis semántico para {username}")
         analyses = get_student_semantic_analysis(username)
@@ -151,42 +156,50 @@ def display_semantic_activities(username: str, t: dict):
 
         logger.info(f"Procesando {len(analyses)} análisis semánticos")
         
-        for analysis in analyses:
+        # Usamos enumerate para tener un índice de respaldo
+        for i, analysis in enumerate(analyses):
             try:
-                # Verificar campos necesarios
+                # 1. Validación de campos críticos
                 if not all(key in analysis for key in ['timestamp', 'concept_graph']):
                     logger.warning(f"Análisis incompleto: {analysis.keys()}")
                     continue
                 
-                # Formatear fecha
-                timestamp = datetime.fromisoformat(analysis['timestamp'].replace('Z', '+00:00'))
+                # 2. Manejo de Fecha (Híbrido: Objeto Date o String ISO)
+                ts_raw = analysis['timestamp']
+                if isinstance(ts_raw, datetime):
+                    timestamp = ts_raw
+                else:
+                    # Por si hay registros antiguos en formato texto
+                    timestamp = datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00'))
+                
                 formatted_date = timestamp.strftime("%d/%m/%Y %H:%M:%S")
                 
-                # Crear expander
-                with st.expander(f"{t.get('analysis_date', 'Fecha')}: {formatted_date}", expanded=False):
-                    # Procesar y mostrar gráfico
+                # 3. Generar ID único para los widgets internos
+                unique_id = str(analysis.get('_id', i))
+                
+                # Crear expander con el ID único en el key por seguridad
+                with st.expander(
+                    f"{t.get('analysis_date', 'Fecha')}: {formatted_date}", 
+                    expanded=False
+                ):
+                    # 4. Procesar y mostrar gráfico
                     if analysis.get('concept_graph'):
                         try:
-                            # Convertir de base64 a bytes
-                            logger.debug("Decodificando gráfico de conceptos")
                             image_data = analysis['concept_graph']
                             
-                            # Si el gráfico ya es bytes, usarlo directamente
+                            # Decodificación robusta
                             if isinstance(image_data, bytes):
                                 image_bytes = image_data
                             else:
-                                # Si es string base64, decodificar
                                 image_bytes = base64.b64decode(image_data)
                             
-                            logger.debug(f"Longitud de bytes de imagen: {len(image_bytes)}")
-                            
-                            # Mostrar imagen
+                            # 5. Corrección de 'use_container_width' según tus logs (BugOne.txt)
+                            # El log sugiere usar width='stretch' para versiones nuevas
                             st.image(
                                 image_bytes,
                                 caption=t.get('concept_network', 'Red de Conceptos'),
-                                use_container_width=True
+                                width='stretch' 
                             )
-                            logger.debug("Gráfico mostrado exitosamente")
                             
                         except Exception as img_error:
                             logger.error(f"Error procesando gráfico: {str(img_error)}")
@@ -202,46 +215,50 @@ def display_semantic_activities(username: str, t: dict):
         logger.error(f"Error mostrando análisis semántico: {str(e)}")
         st.error(t.get('error_semantic', 'Error al mostrar análisis semántico'))
 
-
 ###################################################################################################
 
 def display_discourse_activities(username: str, t: dict):
-    """Muestra actividades de análisis del discurso (mostrado como 'Análisis comparado de textos' en la UI)"""
+    """Muestra actividades de análisis del discurso (Análisis comparado)"""
     try:
         logger.info(f"Recuperando análisis del discurso para {username}")
         analyses = get_student_discourse_analysis(username)
         
         if not analyses:
             logger.info("No se encontraron análisis del discurso")
-            # Usamos el término "análisis comparado de textos" en la UI
             st.info(t.get('no_discourse_analyses', 'No hay análisis comparados de textos registrados'))
             return
 
         logger.info(f"Procesando {len(analyses)} análisis del discurso")
-        for analysis in analyses:
+        for i, analysis in enumerate(analyses):
             try:
-                # Verificar campos mínimos necesarios
                 if not all(key in analysis for key in ['timestamp']):
                     logger.warning(f"Análisis incompleto: {analysis.keys()}")
                     continue
 
-                # Formatear fecha
-                timestamp = datetime.fromisoformat(analysis['timestamp'].replace('Z', '+00:00'))
+                # 1. Manejo Híbrido de Fechas
+                ts_raw = analysis['timestamp']
+                if isinstance(ts_raw, datetime):
+                    timestamp = ts_raw
+                else:
+                    timestamp = datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00'))
+                
                 formatted_date = timestamp.strftime("%d/%m/%Y %H:%M:%S")
                 
+                # 2. ID único para los componentes de este bloque
+                unique_id = str(analysis.get('_id', i))
+                
                 with st.expander(f"{t.get('analysis_date', 'Fecha')}: {formatted_date}", expanded=False):
-                    # Crear dos columnas para mostrar los documentos lado a lado
                     col1, col2 = st.columns(2)
                     
-                    # Documento 1 - Columna izquierda
+                    # --- Documento 1 ---
                     with col1:
                         st.subheader(t.get('doc1_title', 'Documento 1'))
-                        st.markdown(t.get('key_concepts', 'Conceptos Clave'))
+                        st.markdown(f"**{t.get('key_concepts', 'Conceptos Clave')}**")
                         
-                        # Mostrar conceptos clave en formato de etiquetas
                         if 'key_concepts1' in analysis and analysis['key_concepts1']:
+                            # El HTML no requiere Key de Streamlit, pero es bueno que el contenedor sea único
                             concepts_html = f"""
-                                <div style="display: flex; flex-wrap: nowrap; gap: 8px; padding: 12px; 
+                                <div id="concepts1_{unique_id}" style="display: flex; flex-wrap: nowrap; gap: 8px; padding: 12px; 
                                     background-color: #f8f9fa; border-radius: 8px; overflow-x: auto; 
                                     margin-bottom: 15px; white-space: nowrap;">
                                     {''.join([
@@ -253,44 +270,24 @@ def display_discourse_activities(username: str, t: dict):
                                 </div>
                             """
                             st.markdown(concepts_html, unsafe_allow_html=True)
-                        else:
-                            st.info(t.get('no_concepts', 'No hay conceptos disponibles'))
                         
-                        # Mostrar grafo 1
                         if 'graph1' in analysis:
                             try:
-                                if isinstance(analysis['graph1'], bytes):
-                                    st.image(
-                                        analysis['graph1'],
-                                        use_container_width=True
-                                    )
-                                else:
-                                    logger.warning(f"graph1 no es bytes: {type(analysis['graph1'])}")
-                                    st.warning(t.get('graph_not_available', 'Gráfico no disponible'))
+                                # 3. Ajuste de imagen y ancho
+                                img1 = analysis['graph1']
+                                st.image(img1, width='stretch') 
                             except Exception as e:
                                 logger.error(f"Error mostrando graph1: {str(e)}")
                                 st.error(t.get('error_loading_graph', 'Error al cargar el gráfico'))
-                        else:
-                            st.info(t.get('no_visualization', 'No hay visualización disponible'))
-                        
-                        # Interpretación del grafo
-                        st.markdown("**📊 Interpretación del grafo:**")
-                        st.markdown("""
-                            - 🔀 Las flechas indican la dirección de la relación entre conceptos
-                            - 🎨 Los colores más intensos indican conceptos más centrales en el texto
-                            - ⭕ El tamaño de los nodos representa la frecuencia del concepto
-                            - ↔️ El grosor de las líneas indica la fuerza de la conexión
-                        """)
-                    
-                    # Documento 2 - Columna derecha
+
+                    # --- Documento 2 ---
                     with col2:
                         st.subheader(t.get('doc2_title', 'Documento 2'))
-                        st.markdown(t.get('key_concepts', 'Conceptos Clave'))
+                        st.markdown(f"**{t.get('key_concepts', 'Conceptos Clave')}**")
                         
-                        # Mostrar conceptos clave en formato de etiquetas
                         if 'key_concepts2' in analysis and analysis['key_concepts2']:
-                            concepts_html = f"""
-                                <div style="display: flex; flex-wrap: nowrap; gap: 8px; padding: 12px; 
+                            concepts_html2 = f"""
+                                <div id="concepts2_{unique_id}" style="display: flex; flex-wrap: nowrap; gap: 8px; padding: 12px; 
                                     background-color: #f8f9fa; border-radius: 8px; overflow-x: auto; 
                                     margin-bottom: 15px; white-space: nowrap;">
                                     {''.join([
@@ -301,35 +298,18 @@ def display_discourse_activities(username: str, t: dict):
                                     ])}
                                 </div>
                             """
-                            st.markdown(concepts_html, unsafe_allow_html=True)
-                        else:
-                            st.info(t.get('no_concepts', 'No hay conceptos disponibles'))
+                            st.markdown(concepts_html2, unsafe_allow_html=True)
                         
-                        # Mostrar grafo 2
                         if 'graph2' in analysis:
                             try:
-                                if isinstance(analysis['graph2'], bytes):
-                                    st.image(
-                                        analysis['graph2'],
-                                        use_container_width=True
-                                    )
-                                else:
-                                    logger.warning(f"graph2 no es bytes: {type(analysis['graph2'])}")
-                                    st.warning(t.get('graph_not_available', 'Gráfico no disponible'))
+                                img2 = analysis['graph2']
+                                st.image(img2, width='stretch')
                             except Exception as e:
                                 logger.error(f"Error mostrando graph2: {str(e)}")
                                 st.error(t.get('error_loading_graph', 'Error al cargar el gráfico'))
-                        else:
-                            st.info(t.get('no_visualization', 'No hay visualización disponible'))
-                        
-                        # Interpretación del grafo
-                        st.markdown("**📊 Interpretación del grafo:**")
-                        st.markdown("""
-                            - 🔀 Las flechas indican la dirección de la relación entre conceptos
-                            - 🎨 Los colores más intensos indican conceptos más centrales en el texto
-                            - ⭕ El tamaño de los nodos representa la frecuencia del concepto
-                            - ↔️ El grosor de las líneas indica la fuerza de la conexión
-                        """)
+
+                    # Interpretación común para ambos
+                    st.info("💡 **Interpretación:** Los nodos más grandes representan mayor frecuencia. El grosor de las líneas indica la fuerza de la relación semántica entre términos.")
 
             except Exception as e:
                 logger.error(f"Error procesando análisis individual: {str(e)}")
@@ -337,64 +317,64 @@ def display_discourse_activities(username: str, t: dict):
 
     except Exception as e:
         logger.error(f"Error mostrando análisis del discurso: {str(e)}")
-        # Usamos el término "análisis comparado de textos" en la UI
         st.error(t.get('error_discourse', 'Error al mostrar análisis comparado de textos'))
-
-
 
 #################################################################################   
 
 def display_discourse_comparison(analysis: dict, t: dict):
     """
     Muestra la comparación de conceptos clave en análisis del discurso.
-    Formato horizontal simplificado.
+    Formato horizontal simplificado con validación robusta de tipos.
     """
     st.subheader(t.get('comparison_results', 'Resultados de la comparación'))
     
     # Verificar si tenemos los conceptos necesarios
-    if not ('key_concepts1' in analysis and analysis['key_concepts1']):
+    if not analysis.get('key_concepts1'):
         st.info(t.get('no_concepts', 'No hay conceptos disponibles para comparar'))
         return
     
-    # Conceptos del Texto 1 - Formato horizontal
-    st.markdown(f"**{t.get('concepts_text_1', 'Conceptos Texto 1')}:**")
+    # Función auxiliar interna para renderizar conceptos de forma segura
+    def render_concepts_horizontal(concepts_list):
+        if not isinstance(concepts_list, list) or len(concepts_list) == 0:
+            return str(concepts_list)
+        
+        formatted_items = []
+        for item in concepts_list[:10]: # Limitamos a los 10 principales
+            try:
+                # Caso 1: [concepto, valor]
+                if isinstance(item, (list, tuple)) and len(item) >= 2:
+                    val = f"{item[1]:.2f}" if isinstance(item[1], (int, float)) else str(item[1])
+                    formatted_items.append(f"**{item[0]}** ({val})")
+                # Caso 2: Solo el concepto
+                else:
+                    formatted_items.append(f"**{str(item)}**")
+            except Exception:
+                formatted_items.append(str(item))
+        
+        return " • ".join(formatted_items)
+
+    # --- Renderizado de Conceptos Texto 1 ---
+    st.markdown(f"🔹 **{t.get('concepts_text_1', 'Conceptos Texto 1')}:**")
     try:
-        # Comprobar formato y mostrar horizontalmente
-        if isinstance(analysis['key_concepts1'], list) and len(analysis['key_concepts1']) > 0:
-            if isinstance(analysis['key_concepts1'][0], list) and len(analysis['key_concepts1'][0]) == 2:
-                # Formatear como "concepto (valor), concepto2 (valor2), ..."
-                concepts_text = ", ".join([f"{c[0]} ({c[1]})" for c in analysis['key_concepts1'][:10]])
-                st.markdown(f"*{concepts_text}*")
-            else:
-                # Si no tiene el formato esperado, mostrar como lista simple
-                st.markdown(", ".join(str(c) for c in analysis['key_concepts1'][:10]))
-        else:
-            st.write(str(analysis['key_concepts1']))
+        concepts1_html = render_concepts_horizontal(analysis['key_concepts1'])
+        st.markdown(concepts1_html)
     except Exception as e:
         logger.error(f"Error mostrando key_concepts1: {str(e)}")
         st.error(t.get('error_concepts1', 'Error mostrando conceptos del Texto 1'))
     
-    # Conceptos del Texto 2 - Formato horizontal
-    st.markdown(f"**{t.get('concepts_text_2', 'Conceptos Texto 2')}:**")
-    if 'key_concepts2' in analysis and analysis['key_concepts2']:
+    st.divider() # Separador visual sutil
+
+    # --- Renderizado de Conceptos Texto 2 ---
+    st.markdown(f"🔸 **{t.get('concepts_text_2', 'Conceptos Texto 2')}:**")
+    if analysis.get('key_concepts2'):
         try:
-            # Comprobar formato y mostrar horizontalmente
-            if isinstance(analysis['key_concepts2'], list) and len(analysis['key_concepts2']) > 0:
-                if isinstance(analysis['key_concepts2'][0], list) and len(analysis['key_concepts2'][0]) == 2:
-                    # Formatear como "concepto (valor), concepto2 (valor2), ..."
-                    concepts_text = ", ".join([f"{c[0]} ({c[1]})" for c in analysis['key_concepts2'][:10]])
-                    st.markdown(f"*{concepts_text}*")
-                else:
-                    # Si no tiene el formato esperado, mostrar como lista simple
-                    st.markdown(", ".join(str(c) for c in analysis['key_concepts2'][:10]))
-            else:
-                st.write(str(analysis['key_concepts2']))
+            concepts2_html = render_concepts_horizontal(analysis['key_concepts2'])
+            st.markdown(concepts2_html)
         except Exception as e:
             logger.error(f"Error mostrando key_concepts2: {str(e)}")
             st.error(t.get('error_concepts2', 'Error mostrando conceptos del Texto 2'))
     else:
         st.info(t.get('no_concepts2', 'No hay conceptos disponibles para el Texto 2'))
-
 
 
 #################################################################################
@@ -415,7 +395,7 @@ def clean_chat_content(content: str) -> str:
 #################################################################################   
 def display_chat_activities(username: str, t: dict):
     """
-    Muestra historial de conversaciones del chat
+    Muestra historial de conversaciones del chat con manejo robusto de fechas
     """
     try:
         # Obtener historial del chat
@@ -429,41 +409,57 @@ def display_chat_activities(username: str, t: dict):
             st.info(t.get('no_chat_history', 'No hay conversaciones registradas'))
             return
 
-        for chat in reversed(chat_history):  # Mostrar las más recientes primero
+        # Invertir para mostrar las más recientes primero
+        for i, chat in enumerate(reversed(chat_history)):
             try:
-                # Convertir timestamp a datetime para formato
-                timestamp = datetime.fromisoformat(chat['timestamp'].replace('Z', '+00:00'))
+                # 1. Manejo Híbrido de Fechas (Objeto vs String)
+                ts_raw = chat.get('timestamp')
+                if isinstance(ts_raw, datetime):
+                    timestamp = ts_raw
+                elif isinstance(ts_raw, str):
+                    timestamp = datetime.fromisoformat(ts_raw.replace('Z', '+00:00'))
+                else:
+                    timestamp = datetime.now() # Fallback
+                
                 formatted_date = timestamp.strftime("%d/%m/%Y %H:%M:%S")
                 
+                # 2. ID único para el expander (previene cierres inesperados al recargar)
+                unique_id = str(chat.get('_id', i))
+                
                 with st.expander(
-                    f"{t.get('chat_date', 'Fecha de conversación')}: {formatted_date}",
+                    f"💬 {t.get('chat_date', 'Conversación')}: {formatted_date}",
                     expanded=False
                 ):
                     if 'messages' in chat and chat['messages']:
-                        # Mostrar cada mensaje en la conversación
-                        for message in chat['messages']:
+                        # 3. Mostrar mensajes de forma limpia
+                        for msg_idx, message in enumerate(chat['messages']):
                             role = message.get('role', 'unknown')
-                            content = clean_chat_content(message.get('content', ''))
+                            # Aseguramos que el contenido sea string y esté limpio
+                            content = str(message.get('content', ''))
                             
-                            # Usar el componente de chat de Streamlit
+                            # Intentar usar clean_chat_content si está disponible en el scope
+                            try:
+                                content = clean_chat_content(content)
+                            except NameError:
+                                pass 
+                            
                             with st.chat_message(role):
                                 st.markdown(content)
                             
-                            # Agregar separador entre mensajes
-                            st.divider()
+                            # Solo poner divisor si no es el último mensaje
+                            if msg_idx < len(chat['messages']) - 1:
+                                st.divider()
                     else:
                         st.warning(t.get('invalid_chat_format', 'Formato de chat no válido'))
                         
             except Exception as e:
-                logger.error(f"Error mostrando conversación: {str(e)}")
+                logger.error(f"Error mostrando conversación individual: {str(e)}")
                 continue
 
     except Exception as e:
         logger.error(f"Error mostrando historial del chat: {str(e)}")
         st.error(t.get('error_chat', 'Error al mostrar historial del chat'))
 
-
-        
 #################################################################################    
 
 
