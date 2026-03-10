@@ -87,7 +87,7 @@ def record_login(username):
             "id": session_id,
             "type": "session",
             "username": username,
-            "loginTime": datetime.now(timezone.utc).isoformat(),
+            "loginTime": datetime.now(timezone.utc),
             "additional_info": {},
             "partitionKey": username
         }
