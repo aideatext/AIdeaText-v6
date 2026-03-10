@@ -34,7 +34,7 @@ def store_claude_recommendation(username, text, metrics, text_type, recommendati
         # Crear documento
         document = {
             'username': username,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': datetime.now(timezone.utc) # Mejor práctica
             'text': text,
             'metrics': metrics or {},
             'text_type': text_type,

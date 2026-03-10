@@ -50,7 +50,7 @@ def create_user(username, password, role, additional_info=None):
             'id': username,
             'password': password,
             'role': role,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': datetime.now(timezone.utc) # Mejor práctica
             'additional_info': additional_info or {},
             'partitionKey': username  # Agregar partition key
         }

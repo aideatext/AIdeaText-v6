@@ -53,7 +53,7 @@ def store_student_semantic_result(username, text, analysis_result, lang_code='en
         # Crear documento para MongoDB
         analysis_document = {
             'username': username,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': datetime.now(timezone.utc) # Mejor práctica
             'text': text,
             'analysis_type': 'semantic',
             'key_concepts': analysis_result.get('key_concepts', []),

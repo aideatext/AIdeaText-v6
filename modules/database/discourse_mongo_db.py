@@ -25,7 +25,7 @@ def store_student_discourse_result(username, text1, text2, analysis_result):
         # Preparar el documento para MongoDB
         document = {
             'username': username,
-            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'timestamp': datetime.now(timezone.utc) # Mejor práctica
             'text1': text1,
             'text2': text2,
             'key_concepts1': analysis_result.get('key_concepts1', []),
