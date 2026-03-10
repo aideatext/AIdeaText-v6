@@ -52,7 +52,7 @@ squarify
 
 
 #Streamlit
-streamlit==1.45.1
+streamlit
 streamlit-float
 streamlit-player
 streamlit-chat
