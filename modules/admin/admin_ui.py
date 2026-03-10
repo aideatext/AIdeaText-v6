@@ -1,7 +1,5 @@
 import streamlit as st
-
 from datetime import datetime
-
 from ..database.sql_db import (
     get_user,
     get_student_user,
@@ -17,7 +15,6 @@ from ..database.sql_db import (
 )
 
 from ..database.morphosintax_mongo_db import get_student_morphosyntax_analysis
-
 from ..auth.auth import hash_password  # Agregar esta importación al inicio
 
 #######################################################################################
