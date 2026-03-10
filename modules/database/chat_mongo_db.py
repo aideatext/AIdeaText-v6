@@ -105,7 +105,7 @@ def store_chat_history(username: str, messages: list, analysis_type: str = 'side
                 formatted_messages.append({
                     'role': msg.get('role', 'unknown'),
                     'content': clean_text_content(msg.get('content', '')),
-                    'timestamp': datetime.now(timezone.utc),.isoformat()
+                    'timestamp': datetime.now(timezone.utc)
                 })
             except Exception as msg_error:
                 logger.error(f"Error procesando mensaje para almacenar: {str(msg_error)}")
