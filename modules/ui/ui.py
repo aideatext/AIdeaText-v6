@@ -116,7 +116,7 @@ def show_carousel():
                 img = Image.open(event["imagen"]) if isinstance(event["imagen"], str) else event["imagen"]
                 st.image(
                     img,
-                    use_container_width=True,
+                    width='stretch', # <--- Cambio realizado aquí
                     caption=f"{event['titulo']} - {event['descripcion']}"
                 )
             
@@ -344,7 +344,7 @@ def login_register_page(lang_code, t):
         
         # Selector de idioma inline
         selected_lang = st.selectbox(
-            "",
+            "Select Language", # <--- Agrega un texto aquí
             list(languages.keys()),
             index=list(languages.keys()).index('English'),  # Inglés seleccionado por defecto
             label_visibility="collapsed",
