@@ -26,16 +26,13 @@ def get_user(username, role=None):
 def get_admin_user(username):
     return get_user(username, role='Administrador')
 
-
 #########################################
 def get_student_user(username):
     return get_user(username, role='Estudiante')
 
-
 #########################################
 def get_teacher_user(username):
     return get_user(username, role='Profesor')
-
 
 #########################################
 def create_user(username, password, role, additional_info=None):
@@ -50,7 +47,7 @@ def create_user(username, password, role, additional_info=None):
             'id': username,
             'password': password,
             'role': role,
-            'timestamp': datetime.now(timezone.utc) # Mejor práctica
+            'timestamp': datetime.now(timezone.utc), # Mejor práctica
             'additional_info': additional_info or {},
             'partitionKey': username  # Agregar partition key
         }
