@@ -271,7 +271,8 @@ def display_discourse_activities(username: str, t: dict):
                             """
                             st.markdown(concepts_html, unsafe_allow_html=True)
                         
-                        if 'graph1' in analysis:
+                        #if 'graph1' in analysis:
+                        if analysis.get('graph1'): # Esto verifica que exista y que NO sea None
                             try:
                                 # 3. Ajuste de imagen y ancho
                                 img1 = analysis['graph1']
@@ -300,7 +301,8 @@ def display_discourse_activities(username: str, t: dict):
                             """
                             st.markdown(concepts_html2, unsafe_allow_html=True)
                         
-                        if 'graph2' in analysis:
+                        #if 'graph2' in analysis:
+                        if analysis.get('graph2'): # Esto verifica que exista y que NO sea None
                             try:
                                 img2 = analysis['graph2']
                                 st.image(img2, width='stretch')

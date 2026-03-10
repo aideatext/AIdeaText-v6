@@ -64,7 +64,8 @@ from ..database.semantic_mongo_db import (
     store_student_semantic_result,
     get_student_semantic_analysis,
     update_student_semantic_analysis,
-    delete_student_semantic_analysis
+    delete_student_semantic_analysis,
+    get_student_semantic_data
 )
 
 from ..database.semantic_mongo_live_db import get_student_semantic_live_analysis
@@ -99,7 +100,7 @@ def user_page(lang_code, t):
         with st.spinner(t.get('loading_data', "Cargando tus datos...")):
             try:
                 # Obtener datos semánticos
-                semantic_data = get_student_semantic_analysis(st.session_state.username)
+                semantic_data = get_student_semantic_data(st.session_state.username)
                 
                 # Verificar si la operación fue exitosa
                 if semantic_data.get('status') == 'error':
