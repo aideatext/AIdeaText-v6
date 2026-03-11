@@ -4,6 +4,7 @@ from .database_init import get_container
 from datetime import datetime, timezone
 import logging
 import bcrypt
+import bson import json_util
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -47,13 +48,16 @@ def create_user(username, password, role, additional_info=None):
             'id': username,
             'password': password,
             'role': role,
-            'timestamp': datetime.now(timezone.utc), # Mejor práctica
+            'timestamp': datetime.now(timezone.utc),  # ← Se mantiene como datetime
             'additional_info': additional_info or {},
-            'partitionKey': username  # Agregar partition key
+            'partitionKey': username
         }
         
-        # Crear item sin especificar partition_key en el método
-        container.create_item(body=user_data)
+        # Convertir usando json_util antes de enviar a Cosmos DB
+        user_data_json = json.loads(json_util.dumps(user_data))
+        
+        # Crear item con los datos convertidos
+        container.create_item(body=user_data_json)
         logger.info(f"Usuario {role} creado: {username}")
         return True
         
@@ -87,12 +91,15 @@ def record_login(username):
             "id": session_id,
             "type": "session",
             "username": username,
-            "loginTime": datetime.now(timezone.utc),
+            "loginTime": datetime.now(timezone.utc),  # ← Se mantiene como datetime
             "additional_info": {},
             "partitionKey": username
         }
 
-        result = container.create_item(body=session_doc)
+        # Convertir usando json_util
+        session_json = json.loads(json_util.dumps(session_doc))
+        
+        result = container.create_item(body=session_json)
         logger.info(f"Sesión {session_id} registrada para {username}")
         return session_id
     except Exception as e:

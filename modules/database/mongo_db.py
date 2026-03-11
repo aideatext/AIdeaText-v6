@@ -3,6 +3,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+############################################################
 def get_collection(collection_name):
     try:
         db = get_mongodb()
@@ -18,6 +19,7 @@ def get_collection(collection_name):
         logger.error(f"Error al obtener colección {collection_name}: {str(e)}")
         return None
 
+############################################################
 def insert_document(collection_name, document):
     collection = get_collection(collection_name)
     try:
@@ -28,6 +30,7 @@ def insert_document(collection_name, document):
         logger.error(f"Error al insertar documento en {collection_name}: {str(e)}")
         return None
 
+############################################################
 def find_documents(collection_name, query, sort=None, limit=None):
     collection = get_collection(collection_name)
     try:
@@ -41,6 +44,7 @@ def find_documents(collection_name, query, sort=None, limit=None):
         logger.error(f"Error al buscar documentos en {collection_name}: {str(e)}")
         return []
 
+############################################################
 def update_document(collection_name, query, update):
     collection = get_collection(collection_name)
     try:
@@ -51,6 +55,7 @@ def update_document(collection_name, query, update):
         logger.error(f"Error al actualizar documento en {collection_name}: {str(e)}")
         return 0
 
+############################################################
 def delete_document(collection_name, query):
     collection = get_collection(collection_name)
     try:

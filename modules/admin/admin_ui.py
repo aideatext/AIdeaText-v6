@@ -14,7 +14,7 @@ from ..database.sql_db import (
     get_user_total_time
 )
 
-from ..database.morphosintax_mongo_db import get_student_morphosyntax_analysis
+#from ..database.morphosintax_mongo_db import get_student_morphosyntax_analysis
 from ..auth.auth import hash_password  # Agregar esta importación al inicio
 
 #######################################################################################
