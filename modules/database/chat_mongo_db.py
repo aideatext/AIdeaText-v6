@@ -45,9 +45,13 @@ def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int =
     """
     try:
         query = {
-            "username": username,
-            "analysis_type": analysis_type
-        }
+                    "username": username,
+                    "$or": [
+                        {"analysis_type": analysis_type},
+                        {"analysis_type": {"$exists": False}},
+                        {"analysis_type": None}
+                    ]
+                }
         
         collection = get_collection(COLLECTION_NAME)
         if collection is None:
@@ -87,6 +91,7 @@ def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int =
     except Exception as e:
         logger.error(f"Error al recuperar historial de chat: {str(e)}")
         return []
+
 
 def store_chat_history(username: str, messages: list, analysis_type: str = 'sidebar', metadata: dict = None) -> bool:
     """
