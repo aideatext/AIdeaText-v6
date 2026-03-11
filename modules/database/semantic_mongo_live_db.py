@@ -112,7 +112,13 @@ def get_student_semantic_live_analysis(username, limit=10):
             logger.error("No se pudo obtener la colección")
             return []
 
-        query = {"username": username, "analysis_type": "semantic_live"}
+        # Estandarizado: No dependemos de "analysis_type" para evitar saltos de año
+        query = {
+            "username": username,
+            "concept_graph": {"$exists": True, "$ne": None}
+        }
+        
+        analyses = list(collection.find(query).sort("timestamp", -1).limit(limit))
         
         # Versión alternativa sin projection
         cursor = collection.find(query, {

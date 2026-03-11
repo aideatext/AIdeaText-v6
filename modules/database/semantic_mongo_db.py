@@ -107,12 +107,14 @@ def get_student_semantic_analysis(username, limit=10):
             logger.error("No se pudo obtener la colección semantic")
             return []
 
+        # Estandarizado: Buscamos todo lo del usuario que tenga un grafo
         query = {
             "username": username,
-            #"analysis_type": "standard_semantic"
-            # Usamos $in para atrapar tanto los registros viejos como los nuevos
-            "analysis_type": { "$in": ["semantic", "standard_semantic"] }
+            "concept_graph": {"$exists": True, "$ne": None}
         }
+        
+        # Recuperamos y ordenamos por fecha (2026 aparecerá primero, luego 2025)
+        analyses = list(collection.find(query).sort("timestamp", -1).limit(limit))
         
         # Actualizar la proyección para incluir todos los campos necesarios
         projection = {
