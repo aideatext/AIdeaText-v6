@@ -108,10 +108,9 @@ def get_student_semantic_analysis(username, limit=10):
             return []
 
         query = {
-                    "username": username,
-                    # Usamos $in para atrapar tanto los registros viejos como los nuevos
-                    "analysis_type": { "$in": ["semantic", "standard_semantic"] }
-                }
+            "username": username,
+            "analysis_type": "standard_semantic"
+        }
         
         # Actualizar la proyección para incluir todos los campos necesarios
         projection = {
