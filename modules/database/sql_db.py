@@ -4,9 +4,10 @@ from .database_init import get_container
 from datetime import datetime, timezone
 import logging
 import bcrypt
-import bson import json_util
-import json
 import uuid
+from bson import json_util  # ← CORREGIDO: así se importa correctamente
+import json  # ← Necesario para json.loads()
+
 
 logger = logging.getLogger(__name__)
 
