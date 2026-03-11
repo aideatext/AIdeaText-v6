@@ -126,6 +126,7 @@ def get_student_semantic_live_analysis(username, limit=10):
             "text": 1,
             "key_concepts": 1,
             "concept_graph": 1,
+            "analysis_type": 1,
             "_id": 1
         }).sort("timestamp", -1).limit(limit)
         
