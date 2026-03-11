@@ -116,31 +116,25 @@ def get_student_semantic_analysis(username, limit=10):
         # Recuperamos y ordenamos por fecha (2026 aparecerá primero, luego 2025)
         analyses = list(collection.find(query).sort("timestamp", -1).limit(limit))
         
-        # Actualizar la proyección para incluir todos los campos necesarios
-        projection = {
+        # Versión alternativa sin projection
+        cursor = collection.find(query, {
             "timestamp": 1,
-            "text": 1,  # Añadir este campo
-            "key_concepts": 1,  # Añadir este campo
-            "entities": 1,  # Añadir este campo
+            "text": 1,
+            "key_concepts": 1,
             "concept_graph": 1,
+            "analysis_type": 1,
             "_id": 1
-        }
+        }).sort("timestamp", -1).limit(limit)
         
-        try:
-            cursor = collection.find(query, projection).sort("timestamp", -1)
-            if limit:
-                cursor = cursor.limit(limit)
-            
-            results = list(cursor)
-            logger.info(f"Recuperados {len(results)} análisis semánticos para {username}")
-            return results
-            
-        except Exception as db_error:
-            logger.error(f"Error en la consulta a MongoDB: {str(db_error)}")
-            return []
+        results = list(cursor)
+        logger.info(f"Recuperados {len(results)} análisis para {username}")
+        return results
         
+    except PyMongoError as e:
+        logger.error(f"Error de MongoDB: {str(e)}")
+        return []
     except Exception as e:
-        logger.error(f"Error recuperando análisis semántico: {str(e)}")
+        logger.error(f"Error inesperado: {str(e)}")
         return []
 ####################################################################################################
 
