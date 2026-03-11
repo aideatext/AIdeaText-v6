@@ -62,7 +62,7 @@ def store_student_discourse_result(username, text1, text2, analysis_result):
 
 # Corrección 1: Actualizar get_student_discourse_analysis para recuperar todos los campos necesarios
 
-def get_student_discourse_analysis(username, limit=10):
+def get_student_discourse_analysis(username, limit=100):
     """
     Recupera los análisis del discurso de un estudiante.
     """

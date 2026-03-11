@@ -97,7 +97,7 @@ def store_student_semantic_result(username, text, analysis_result, lang_code='en
         return False
 
 ####################################################################################
-def get_student_semantic_analysis(username, limit=10):
+def get_student_semantic_analysis(username, limit=100):
     """
     Recupera los análisis semánticos de un estudiante.
     """

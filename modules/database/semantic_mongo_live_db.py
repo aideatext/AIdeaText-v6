@@ -102,7 +102,7 @@ def store_student_semantic_live_result(username, text, analysis_result, lang_cod
 
 ##########################################
 ##########################################
-def get_student_semantic_live_analysis(username, limit=10):
+def get_student_semantic_live_analysis(username, limit=100):
     """
     Versión corregida sin usar projection
     """
