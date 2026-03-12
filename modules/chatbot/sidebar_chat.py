@@ -90,7 +90,7 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                             store_chat_history(
                                 username=st.session_state.username,
                                 messages=st.session_state.sidebar_messages,
-                                chat_type='semantic_analysis',
+                                analysis_type='semantic_analysis',
                                 metadata={
                                     'text_sample': st.session_state.semantic_agent_data['text'][:500],
                                     'concepts': st.session_state.semantic_agent_data['metrics']['key_concepts'][:5]
