@@ -89,7 +89,7 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                                 {"role": "user", "content": user_input}
                             )
                         
-                            # Obtener y mostrar respuesta (con limpieza de caracteres)
+                            # Obtener y mostrar respuesta
                             with st.chat_message("assistant"):
                                 response_stream = st.session_state.chat_processor.process_chat_input(
                                     user_input, lang_code
@@ -108,12 +108,12 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                                     {"role": "assistant", "content": clean_response}
                                 )
                         
-                        # Guardar en base de datos (con texto limpio)
+                        # Guardar en base de datos - CORREGIDO: analysis_type en lugar de chat_type
                         if 'username' in st.session_state and st.session_state.get('semantic_agent_data'):
                             store_chat_history(
                                 username=st.session_state.username,
                                 messages=st.session_state.sidebar_messages,
-                                chat_type='semantic_analysis',
+                                analysis_type='semantic_analysis',  # ¡CORREGIDO!
                                 metadata={
                                     'text_sample': st.session_state.semantic_agent_data['text'][:500],
                                     'concepts': st.session_state.semantic_agent_data['metrics']['key_concepts'][:5],
