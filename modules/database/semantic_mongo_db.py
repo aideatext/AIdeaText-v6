@@ -97,9 +97,10 @@ def store_student_semantic_result(username, text, analysis_result, lang_code='en
         return False
 
 ####################################################################################
-def get_student_semantic_analysis(username, limit=100):
+def get_student_semantic_analysis(username, limit=10):
     """
     Recupera los análisis semánticos de un estudiante.
+    Ordena correctamente resolviendo discrepancias de formato de fecha.
     """
     try:
         collection = get_collection(COLLECTION_NAME)
@@ -107,34 +108,53 @@ def get_student_semantic_analysis(username, limit=100):
             logger.error("No se pudo obtener la colección semantic")
             return []
 
-        # Estandarizado: Buscamos todo lo del usuario que tenga un grafo
         query = {
             "username": username,
             "concept_graph": {"$exists": True, "$ne": None}
         }
         
-        # Recuperamos y ordenamos por fecha (2026 aparecerá primero, luego 2025)
-        analyses = list(collection.find(query).sort("timestamp", -1).limit(limit))
+        # Pipeline de agregación para unificar el tipo de dato antes de ordenar
+        pipeline = [
+            {"$match": query},
+            {"$addFields": {
+                "normalized_date": {
+                    "$convert": {
+                        "input": "$timestamp",
+                        "to": "date",
+                        "onError": None, # Si hay un formato inválido, no rompe la consulta
+                        "onNull": None
+                    }
+                }
+            }},
+            # Ordenamos usando la fecha ya normalizada
+            {"$sort": {"normalized_date": -1}}
+        ]
         
-        # Versión alternativa sin projection
-        cursor = collection.find(query, {
-            "timestamp": 1,
-            "text": 1,
-            "key_concepts": 1,
-            "concept_graph": 1,
-            "analysis_type": 1,
-            "_id": 1
-        }).sort("timestamp", -1).limit(limit)
+        # Aplicamos el límite solo si se especifica (útil para get_student_semantic_data)
+        if limit is not None:
+            pipeline.append({"$limit": limit})
+            
+        # Proyectamos solo los campos necesarios
+        pipeline.append({
+            "$project": {
+                "timestamp": 1,
+                "text": 1,
+                "key_concepts": 1,
+                "concept_graph": 1,
+                "analysis_type": 1,
+                "_id": 1
+            }
+        })
         
-        results = list(cursor)
+        results = list(collection.aggregate(pipeline))
         logger.info(f"Recuperados {len(results)} análisis para {username}")
         return results
         
     except PyMongoError as e:
-        logger.error(f"Error de MongoDB: {str(e)}")
+        logger.error(f"Error de MongoDB en la agregación: {str(e)}")
         return []
     except Exception as e:
-        logger.error(f"Error inesperado: {str(e)}")
+        logger.error(f"Error inesperado al recuperar análisis: {str(e)}")
         return []
 ####################################################################################################
 
