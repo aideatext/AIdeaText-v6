@@ -104,7 +104,8 @@ def store_student_semantic_live_result(username, text, analysis_result, lang_cod
 ##########################################
 def get_student_semantic_live_analysis(username, limit=10):
     """
-    Versión corregida sin usar projection
+    Versión optimizada: Elimina redundancia y garantiza orden cronológico 
+    mediante normalización de fechas al vuelo.
     """
     try:
         collection = get_collection(COLLECTION_NAME)
@@ -112,33 +113,51 @@ def get_student_semantic_live_analysis(username, limit=10):
             logger.error("No se pudo obtener la colección")
             return []
 
-        # Estandarizado: No dependemos de "analysis_type" para evitar saltos de año
+        # Criterio de búsqueda: usuario específico y que tenga el grafo generado
         query = {
             "username": username,
             "concept_graph": {"$exists": True, "$ne": None}
         }
+
+        # Pipeline de Agregación para resolver el desorden de fechas (2025 vs 2026)
+        pipeline = [
+            {"$match": query},
+            # Convertimos el timestamp a objeto Date real para que el sort sea exacto
+            {"$addFields": {
+                "sort_date": {
+                    "$convert": {
+                        "input": "$timestamp",
+                        "to": "date",
+                        "onError": "$timestamp", # Si falla, mantiene el valor original
+                        "onNull": "$timestamp"
+                    }
+                }
+            }},
+            # Ordenamos por la fecha normalizada de forma descendente (más reciente primero)
+            {"$sort": {"sort_date": -1}},
+            {"$limit": limit},
+            # Proyectamos solo los campos necesarios para no sobrecargar la memoria
+            {"$project": {
+                "timestamp": 1,
+                "text": 1,
+                "key_concepts": 1,
+                "concept_graph": 1,
+                "analysis_type": 1,
+                "_id": 1
+            }}
+        ]
+
+        # Ejecutamos una única vez la consulta
+        results = list(collection.aggregate(pipeline))
         
-        analyses = list(collection.find(query).sort("timestamp", -1).limit(limit))
-        
-        # Versión alternativa sin projection
-        cursor = collection.find(query, {
-            "timestamp": 1,
-            "text": 1,
-            "key_concepts": 1,
-            "concept_graph": 1,
-            "analysis_type": 1,
-            "_id": 1
-        }).sort("timestamp", -1).limit(limit)
-        
-        results = list(cursor)
-        logger.info(f"Recuperados {len(results)} análisis para {username}")
+        logger.info(f"Recuperados {len(results)} análisis 'live' para {username}")
         return results
-        
+
     except PyMongoError as e:
-        logger.error(f"Error de MongoDB: {str(e)}")
+        logger.error(f"Error de MongoDB en live analysis: {str(e)}")
         return []
     except Exception as e:
-        logger.error(f"Error inesperado: {str(e)}")
+        logger.error(f"Error inesperado en live analysis: {str(e)}")
         return []
 
 #######################################################
