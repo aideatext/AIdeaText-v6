@@ -23,7 +23,7 @@ class ChatProcessor:
             raise ValueError("Texto y métricas son requeridos")
             
         self.semantic_context = {
-            'full_text': text,  # Texto completo del documento
+            'full_text': text,
             'key_concepts': metrics.get('key_concepts', []),
             'concept_centrality': metrics.get('concept_centrality', {}),
             'graph_available': graph_data is not None,
@@ -51,7 +51,8 @@ class ChatProcessor:
             1. Answer questions about concepts and their relationships
             2. Explain the semantic network structure
             3. Suggest text improvements
-            4. Provide insights based on concept centrality""",
+            4. Provide insights based on concept centrality
+            5. IMPORTANT FORMATTING: Always format citations or numerical references using brackets with a leading space (e.g., text [1], concept [2]).""",
             
             'es': f"""Eres un experto en análisis semántico. El usuario analizó un artículo de investigación.
             Texto completo disponible (abreviado para contexto).
@@ -61,8 +62,9 @@ class ChatProcessor:
             Tus tareas:
             1. Responder preguntas sobre conceptos y sus relaciones
             2. Explicar la estructura de la red semántica
-            3. Sugerir mejorias al texto
-            4. Proporcionar insights basados en centralidad de conceptos""",
+            3. Sugerir mejoras al texto
+            4. Proporcionar insights basados en centralidad de conceptos
+            5. FORMATO IMPORTANTE: Formatea siempre las citas o referencias numéricas usando corchetes y asegurando un espacio antes (por ejemplo: texto [1], concepto [2]).""",
             
             'pt': f"""Você é um especialista em análise semântica. O usuário analisou um artigo de pesquisa.
             Texto completo disponível (abreviado para contexto).
@@ -73,7 +75,8 @@ class ChatProcessor:
             1. Responder perguntas sobre conceitos e suas relações
             2. Explicar a estrutura da rede semântica
             3. Sugerir melhorias no texto
-            4. Fornecer insights com base na centralidade dos conceitos""",
+            4. Fornecer insights com base na centralidade dos conceitos
+            5. FORMATAÇÃO IMPORTANTE: Formate sempre as citações ou referências numéricas usando colchetes e garantindo um espaço antes (por exemplo: texto [1], conceito [2]).""",
             
             'fr': f"""Vous êtes un expert en analyse sémantique. L'utilisateur a analysé un article de recherche.
             Texte complet disponible (abrégé pour le contexte).
@@ -84,14 +87,16 @@ class ChatProcessor:
             1. Répondre aux questions sur les concepts et leurs relations
             2. Expliquer la structure du réseau sémantique
             3. Suggérer des améliorations de texte
-            4. Fournir des insights basés sur la centralité des concepts"""
+            4. Fournir des insights basés sur la centralité des concepts
+            5. FORMATAGE IMPORTANT: Formatez toujours les citations ou les références numériques en utilisant des crochets et en assurant un espace avant (par exemple: texte [1], concept [2])."""
         }
         
         return prompts.get(self.current_lang, prompts['en'])
 
     def clean_generated_text(self, text):
-        """Limpia caracteres especiales del texto generado"""
-        return text.replace("\u2588", "").replace("▌", "").strip()
+        """Limpia caracteres especiales del texto generado SIN eliminar espacios en blanco de los extremos."""
+        # Se elimina .strip() para no romper los espacios entre chunks del stream
+        return text.replace("\u2588", "").replace("▌", "")
 
     def process_chat_input(self, message: str, lang_code: str) -> Generator[str, None, None]:
         """Procesa el mensaje con todo el contexto disponible"""
@@ -100,12 +105,10 @@ class ChatProcessor:
                 yield "Error: Contexto semántico no configurado. Recargue el análisis."
                 return
                 
-            # Actualizar idioma si es diferente
             if lang_code != self.current_lang:
                 self.current_lang = lang_code
                 logger.info(f"Idioma cambiado a: {lang_code}")
 
-            # Construir historial de mensajes
             messages = [
                 {
                     "role": "user",
@@ -115,7 +118,6 @@ class ChatProcessor:
                 {"role": "user", "content": message}
             ]
 
-            # Llamar a Claude con streaming
             with self.client.messages.stream(
                 model="claude-sonnet-4-5-20250929",
                 max_tokens=4000,
@@ -129,10 +131,10 @@ class ChatProcessor:
                     full_response += cleaned_chunk
                     yield cleaned_chunk
                 
-                # Guardar respuesta en historial
+                # Opcional: Aplicar un strip final solo al guardarlo en el historial
                 self.conversation_history.extend([
                     {"role": "user", "content": message},
-                    {"role": "assistant", "content": full_response}
+                    {"role": "assistant", "content": full_response.strip()}
                 ])
                 logger.info("Respuesta generada y guardada en historial")
 
