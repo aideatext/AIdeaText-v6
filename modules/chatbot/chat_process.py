@@ -3,16 +3,18 @@ import os
 import json
 import boto3
 import logging
+import time
 import base64
 from typing import Generator
 from botocore.config import Config
+from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 
 class ChatProcessor:
     def __init__(self):
         """Inicializa el procesador de chat con AWS Bedrock (Jamba 1.5 Large)"""
-        # Configurar cliente de Bedrock
+        # Configurar cliente de Bedrock con más reintentos
         self.bedrock = boto3.client(
             'bedrock-runtime',
             region_name=os.environ.get("AWS_REGION", "us-east-1"),
@@ -20,7 +22,7 @@ class ChatProcessor:
             aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
             config=Config(
                 retries={
-                    'max_attempts': 3,
+                    'max_attempts': 5,
                     'mode': 'adaptive'
                 }
             )
@@ -28,6 +30,8 @@ class ChatProcessor:
         self.conversation_history = []
         self.semantic_context = None
         self.current_lang = 'en'
+        self.last_request_time = 0
+        self.min_request_interval = 2.0  # Mínimo 2 segundos entre peticiones
 
     def set_semantic_context(self, text, metrics, graph_data, lang_code='en'):
         """Configura el contexto semántico completo para el chat"""
@@ -40,7 +44,7 @@ class ChatProcessor:
             'key_concepts': metrics.get('key_concepts', []),
             'concept_centrality': metrics.get('concept_centrality', {}),
             'graph_available': graph_data is not None,
-            'graph_data': graph_data,  # Guardamos el grafo para usarlo en el chat
+            'graph_data': graph_data,
             'language': lang_code
         }
         self.current_lang = lang_code
@@ -111,10 +115,10 @@ Vos tâches:
         """Construye el contenido multimodal con texto + grafo si está disponible"""
         content_parts = []
         
-        # 1. Añadir el texto del documento
+        # 1. Añadir el texto del documento (reducido para ahorrar tokens)
         if self.semantic_context and 'full_text' in self.semantic_context:
             content_parts.append(
-                f"Documento analizado (extracto):\n{self.semantic_context['full_text'][:1500]}..."
+                f"Documento analizado (extracto):\n{self.semantic_context['full_text'][:1000]}..."
             )
         
         # 2. Añadir conceptos clave
@@ -122,107 +126,139 @@ Vos tâches:
             concepts = self.semantic_context['key_concepts'][:5]
             content_parts.append(f"Conceptos clave: {concepts}")
         
-        # 3. Añadir el grafo si está disponible (en base64)
-        if self.semantic_context and self.semantic_context.get('graph_available'):
-            graph_data = self.semantic_context.get('graph_data')
-            if graph_data:
-                # Si el grafo ya es base64, lo usamos directamente
-                if isinstance(graph_data, str) and graph_data.startswith('iVBOR'):
-                    content_parts.append(f"![Grafo](data:image/png;base64,{graph_data})")
-                else:
-                    content_parts.append("Grafo disponible para consultas visuales.")
-        
-        # 4. Añadir el mensaje actual del usuario
+        # 3. Añadir el mensaje actual del usuario
         content_parts.append(f"Pregunta del usuario: {message}")
         
         return "\n\n".join(content_parts)
 
     def process_chat_input(self, message: str, lang_code: str) -> Generator[str, None, None]:
         """Procesa el mensaje con todo el contexto disponible usando Jamba 1.5 en Bedrock"""
-        try:
-            if not self.semantic_context:
-                yield "Error: Contexto semántico no configurado. Recargue el análisis."
+        max_retries = 3
+        base_delay = 5
+        
+        for attempt in range(max_retries):
+            try:
+                if not self.semantic_context:
+                    yield "Error: Contexto semántico no configurado. Recargue el análisis."
+                    return
+                    
+                # Actualizar idioma si es diferente
+                if lang_code != self.current_lang:
+                    self.current_lang = lang_code
+                    logger.info(f"Idioma cambiado a: {lang_code}")
+
+                # Control de tasa simple (no más de 1 petición cada 2 segundos)
+                current_time = time.time()
+                time_since_last = current_time - self.last_request_time
+                if time_since_last < self.min_request_interval:
+                    sleep_time = self.min_request_interval - time_since_last
+                    logger.info(f"Respetando intervalo mínimo: esperando {sleep_time:.2f}s")
+                    time.sleep(sleep_time)
+
+                # Construir el contenido multimodal
+                user_content = self._build_multimodal_content(message)
+
+                # Construir mensajes para Jamba
+                messages = []
+                
+                # Añadir system prompt
+                messages.append({
+                    "role": "system",
+                    "content": self._get_system_prompt()
+                })
+                
+                # Añadir historial de conversación (últimos 4 intercambios)
+                for msg in self.conversation_history[-8:]:
+                    messages.append(msg)
+                
+                # Añadir mensaje actual del usuario
+                messages.append({
+                    "role": "user",
+                    "content": user_content
+                })
+
+                # Preparar el cuerpo de la petición para Jamba 1.5 Large
+                request_body = {
+                    "messages": messages,
+                    "max_tokens": 1500,  # Reducido de 2000 a 1500 para ahorrar tokens
+                    "temperature": 0.7,
+                    "top_p": 0.9,
+                    "stop": [],
+                    "n": 1
+                }
+
+                logger.info(f"Enviando petición a Jamba (intento {attempt + 1}/{max_retries})")
+                
+                # Llamar a Bedrock
+                response = self.bedrock.invoke_model(
+                    modelId='ai21.jamba-1-5-large-v1:0',
+                    contentType='application/json',
+                    accept='application/json',
+                    body=json.dumps(request_body)
+                )
+
+                # Actualizar tiempo de última petición
+                self.last_request_time = time.time()
+
+                # Procesar la respuesta
+                response_body = json.loads(response['body'].read())
+                
+                # Extraer el texto de la respuesta
+                if 'choices' in response_body and len(response_body['choices']) > 0:
+                    full_response = response_body['choices'][0]['message']['content']
+                else:
+                    full_response = "Lo siento, no pude generar una respuesta."
+
+                # Limpiar la respuesta
+                clean_response = self.clean_generated_text(full_response)
+
+                # Simular streaming
+                chunk_size = 50
+                for i in range(0, len(clean_response), chunk_size):
+                    yield clean_response[i:i+chunk_size]
+                
+                # Guardar respuesta en historial
+                self.conversation_history.append({"role": "user", "content": message})
+                self.conversation_history.append({"role": "assistant", "content": clean_response})
+                
+                # Mantener historial manejable
+                if len(self.conversation_history) > 40:
+                    self.conversation_history = self.conversation_history[-40:]
+                    
+                logger.info("Respuesta generada y guardada en historial")
+                return  # Éxito, salir del bucle
+
+            except ClientError as e:
+                error_code = e.response['Error']['Code']
+                error_message = e.response['Error']['Message']
+                
+                if error_code == 'ThrottlingException' and attempt < max_retries - 1:
+                    wait_time = base_delay * (2 ** attempt)  # 5, 10, 20 segundos
+                    logger.warning(f"Throttling detectado. Esperando {wait_time}s (intento {attempt+1}/{max_retries})")
+                    
+                    # Mensaje amigable para el usuario
+                    if attempt == 0:
+                        yield "⏳ El sistema está procesando muchas solicitudes. Espera un momento..."
+                    
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Error en process_chat_input: {error_code} - {error_message}", exc_info=True)
+                    error_messages = {
+                        'en': "Error processing message. Please try again in a moment.",
+                        'es': "Error al procesar mensaje. Intente nuevamente en un momento.",
+                        'pt': "Erro ao processar mensagem. Tente novamente em um momento.",
+                        'fr': "Erreur lors du traitement. Réessayez dans un moment."
+                    }
+                    yield error_messages.get(self.current_lang, "Processing error")
+                    return
+                    
+            except Exception as e:
+                logger.error(f"Error inesperado en process_chat_input: {str(e)}", exc_info=True)
+                error_messages = {
+                    'en': "Unexpected error. Please try again.",
+                    'es': "Error inesperado. Intente nuevamente.",
+                    'pt': "Erro inesperado. Tente novamente.",
+                    'fr': "Erreur inattendue. Réessayez."
+                }
+                yield error_messages.get(self.current_lang, "Processing error")
                 return
-                
-            # Actualizar idioma si es diferente
-            if lang_code != self.current_lang:
-                self.current_lang = lang_code
-                logger.info(f"Idioma cambiado a: {lang_code}")
-
-            # Construir el contenido multimodal
-            user_content = self._build_multimodal_content(message)
-
-            # Construir mensajes para Jamba (formato específico)
-            messages = []
-            
-            # Añadir system prompt
-            messages.append({
-                "role": "system",
-                "content": self._get_system_prompt()
-            })
-            
-            # Añadir historial de conversación (últimos 4 intercambios para no exceder contexto)
-            for msg in self.conversation_history[-8:]:  # 8 mensajes = 4 intercambios
-                messages.append(msg)
-            
-            # Añadir mensaje actual del usuario
-            messages.append({
-                "role": "user",
-                "content": user_content
-            })
-
-            # Preparar el cuerpo de la petición para Jamba 1.5 Large
-            request_body = {
-                "messages": messages,
-                "max_tokens": 2000,
-                "temperature": 0.7,
-                "top_p": 0.9,
-                "stop": [],
-                "n": 1
-            }
-
-            # Llamar a Bedrock (sin streaming por ahora, Jamba no soporta streaming nativo)
-            response = self.bedrock.invoke_model(
-                modelId='ai21.jamba-1-5-large-v1:0',
-                contentType='application/json',
-                accept='application/json',
-                body=json.dumps(request_body)
-            )
-
-            # Procesar la respuesta
-            response_body = json.loads(response['body'].read())
-            
-            # Extraer el texto de la respuesta (formato específico de Jamba)
-            if 'choices' in response_body and len(response_body['choices']) > 0:
-                full_response = response_body['choices'][0]['message']['content']
-            else:
-                full_response = "Lo siento, no pude generar una respuesta."
-
-            # Limpiar la respuesta
-            clean_response = self.clean_generated_text(full_response)
-
-            # Simular streaming para mantener compatibilidad con la interfaz
-            # Dividimos la respuesta en fragmentos para simular streaming
-            chunk_size = 50
-            for i in range(0, len(clean_response), chunk_size):
-                yield clean_response[i:i+chunk_size]
-            
-            # Guardar respuesta en historial
-            self.conversation_history.append({"role": "user", "content": message})
-            self.conversation_history.append({"role": "assistant", "content": clean_response})
-            
-            # Mantener historial manejable (últimos 20 mensajes)
-            if len(self.conversation_history) > 40:
-                self.conversation_history = self.conversation_history[-40:]
-                
-            logger.info("Respuesta generada y guardada en historial")
-
-        except Exception as e:
-            logger.error(f"Error en process_chat_input: {str(e)}", exc_info=True)
-            error_messages = {
-                'en': "Error processing message. Please reload the analysis.",
-                'es': "Error al procesar mensaje. Recargue el análisis.",
-                'pt': "Erro ao processar mensagem. Recarregue a análise.",
-                'fr': "Erreur lors du traitement du message. Veuillez recharger l'analyse."
-            }
-            yield error_messages.get(self.current_lang, "Processing error")
