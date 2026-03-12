@@ -3,6 +3,8 @@ azure-identity
 azure-cosmos
 antiword
 bcrypt
+boto3
+botocore
 certifi
 cairosvg
 python-dotenv
