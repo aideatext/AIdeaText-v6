@@ -9,33 +9,73 @@ from dateutil.parser import parse
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Importaciones locales
+# --- IMPORTACIONES LOCALES Y SESIÓN ---
 from ..utils.widget_utils import generate_unique_key
-from session_state import logout
+from session_state import initialize_session_state, logout
+from translations import get_translations
+from ..auth.auth import authenticate_user, authenticate_student, authenticate_admin
+from ..admin.admin_ui import admin_page
 from ..chatbot import display_sidebar_chat
 from ..studentact.student_activities_v2 import display_student_activities
 
-# Importaciones de base de datos (SQL y NoSQL según tu estructura)
+# --- IMPORTACIONES DE BASES DE DATOS (SQL) ---
 from ..database.sql_db import (
+    get_user,
+    get_admin_user,
     get_student_user,
-    update_student_user
+    get_teacher_user,
+    create_user,
+    create_student_user,
+    create_teacher_user,
+    create_admin_user,
+    update_student_user,
+    delete_student_user,
+    record_login,
+    record_logout,
+    get_recent_sessions,
+    get_user_total_time, 
+    store_application_request,
+    store_student_feedback
 )
-from ..database.database_oldFromV2 import (
-    get_student_data,
-    store_user_feedback # Ajustado según tus archivos
+
+# --- IMPORTACIONES DE BASES DE DATOS (NOSQL / MONGO) ---
+from ..database.mongo_db import (
+    get_collection, insert_document, find_documents, 
+    update_document, delete_document
+)
+from ..database.semantic_mongo_db import (
+    store_student_semantic_result,
+    get_student_semantic_analysis,
+    update_student_semantic_analysis,
+    delete_student_semantic_analysis,
+    get_student_semantic_data
+)
+from ..database.semantic_mongo_live_db import get_student_semantic_live_analysis
+from ..database.chat_mongo_db import store_chat_history, get_chat_history
+
+# --- IMPORTACIONES DE INTERFACES DE ANÁLISIS ---
+from ..semantic.semantic_live_interface import display_semantic_live_interface
+from ..semantic.semantic_interface import (
+    display_semantic_interface, 
+    display_semantic_results
+)
+from ..discourse.discourse_interface import (
+    display_discourse_interface,
+    display_discourse_results
 )
 
 def user_page(username, lang_code, t):
     """
-    Página principal del estudiante con carga de datos e interfaz de pestañas.
+    Página principal del estudiante. 
+    Acepta 3 argumentos para evitar el TypeError reportado.
     """
-    logger.info(f"Cargando interfaz de usuario para: {username}")
+    logger.info(f"Cargando User Page para: {username}")
 
-    # --- CARGA INICIAL DE DATOS ---
-    # Intentamos obtener datos existentes del estudiante para pre-cargar la interfaz
-    student_data = get_student_data(username)
+    # --- 1. CARGA INICIAL DE DATOS ---
+    # Obtenemos los datos del estudiante desde SQL para tener el perfil completo
+    student_user = get_student_user(username)
     
-    # --- BARRA LATERAL (SIDEBAR) ---
+    # --- 2. BARRA LATERAL (SIDEBAR) ---
     with st.sidebar:
         try:
             st.image("assets/logo_aideatext.png", use_container_width=True)
@@ -44,19 +84,19 @@ def user_page(username, lang_code, t):
         
         st.divider()
         
-        # El Tutor Virtual (Bloque persistente)
+        # El Tutor Virtual (Sidebar Chat persistente)
         st.subheader(t.get('tutor_title', 'Tutor Virtual'))
         display_sidebar_chat(username, lang_code)
         
         st.divider()
-        if st.button(t.get('logout', 'Cerrar Sesión'), key="logout_btn_user"):
+        if st.button(t.get('logout', 'Cerrar Sesión'), key="btn_logout_main"):
             logout()
             st.rerun()
 
-    # --- CUERPO PRINCIPAL ---
-    st.title(f"🚀 {t.get('welcome', 'Panel de Control')}")
+    # --- 3. CUERPO PRINCIPAL ---
+    st.title(f"🚀 {t.get('welcome', 'Bienvenido')}, {username}")
 
-    # Sistema de tabs solicitado
+    # Definición de nombres de Tabs según tus traducciones
     tab_names = [
         t.get('semantic_live_tab', 'Análisis Semántico (Texto Directo)'),
         t.get('semantic_tab', 'Análisis Semántico'),
@@ -67,44 +107,43 @@ def user_page(username, lang_code, t):
     
     tabs = st.tabs(tab_names)
 
-    # --- CONTENIDO DE LAS TABS ---
+    # --- TAB 0: Análisis Semántico Directo ---
+    with tabs[0]:
+        display_semantic_live_interface(username, lang_code)
 
-    with tabs[0]: # Análisis Semántico (Texto Directo)
-        st.header(tab_names[0])
-        st.info("Escribe o pega tu texto aquí para un análisis inmediato.")
-        # Aquí irá la lógica de live analysis
+    # --- TAB 1: Análisis Semántico (Histórico/Archivos) ---
+    with tabs[1]:
+        display_semantic_interface(username, lang_code)
 
-    with tabs[1]: # Análisis Semántico
-        st.header(tab_names[1])
-        # Lógica de carga de archivos o grafos guardados
+    # --- TAB 2: Análisis Comparado (Métrica M1) ---
+    with tabs[2]:
+        # Aquí es donde conectaremos el "Match" entre Chat y Escrito
+        display_discourse_interface(username, lang_code)
 
-    with tabs[2]: # Análisis comparado de textos (Métrica M1)
-        st.header(tab_names[2])
-        st.write("Comparativa entre versiones de texto o Chat vs. Escrito.")
-
-    with tabs[3]: # Registro de mis actividades
-        st.header(tab_names[3])
-        # Conexión con DocumentDB para el piloto UNIFE
+    # --- TAB 3: Registro de Actividades (Piloto UNIFE) ---
+    with tabs[3]:
         display_student_activities(username, lang_code, t)
 
-    with tabs[4]: # Formulario de Comentarios
-        st.header(tab_names[4])
+    # --- TAB 4: Feedback ---
+    with tabs[4]:
         display_feedback_form(lang_code, t)
 
 def display_feedback_form(lang_code, t):
-    """
-    Muestra el formulario de retroalimentación restaurado
-    """
+    """Interfaz para envío de comentarios"""
     feedback_t = t.get('FEEDBACK', t)
     
-    with st.container():
-        name = st.text_input(feedback_t.get('name', 'Nombre'), key="fb_name")
-        email = st.text_input(feedback_t.get('email', 'Correo electrónico'), key="fb_email")
-        feedback = st.text_area(feedback_t.get('feedback', 'Retroalimentación'), key="fb_text")
-
-        if st.button(feedback_t.get('submit', 'Enviar Feedback')):
+    with st.form("user_feedback_form"):
+        name = st.text_input(feedback_t.get('name', 'Nombre'))
+        email = st.text_input(feedback_t.get('email', 'Correo electrónico'))
+        feedback = st.text_area(feedback_t.get('feedback', 'Retroalimentación'))
+        
+        submit = st.form_submit_button(feedback_t.get('submit', 'Enviar'))
+        
+        if submit:
             if name and email and feedback:
-                # Aquí llamarías a tu función de guardado
-                st.success(feedback_t.get('feedback_success', 'Gracias por tus comentarios.'))
+                if store_student_feedback(st.session_state.username, name, email, feedback):
+                    st.success(feedback_t.get('feedback_success', 'Gracias por tu respuesta'))
+                else:
+                    st.error("Error al guardar el feedback.")
             else:
-                st.error("Por favor, completa todos los campos.")
+                st.warning("Por favor completa todos los campos.")
