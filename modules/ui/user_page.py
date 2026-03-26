@@ -109,8 +109,8 @@ def user_page(username, lang_code, t):
 
     # Preparar diccionarios de traducción específicos para las interfaces
     # Si 't' no los tiene, pasamos 't' completo o un dict vacío según requiera el módulo
-    semantic_t = t.get('SEMANTIC', t)
-    discourse_t = t.get('DISCOURSE', t)
+    semantic_t = t.get('SEMANTIC', t) # verficar
+    discourse_t = t.get('DISCOURSE', t) # verificar
 
     # --- TAB 0: Análisis Semántico Directo ---
     with tabs[0]:
