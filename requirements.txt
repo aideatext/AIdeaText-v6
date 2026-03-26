@@ -4,7 +4,7 @@ azure-cosmos
 antiword
 bcrypt
 boto3
-botocore
+# botocore
 certifi
 cairosvg
 python-dotenv
@@ -17,10 +17,17 @@ docx2txt
 # https://huggingface.co/spacy/fr_core_news_lg/resolve/main/fr_core_news_lg-any-py3-none-any.whl
 
 # Enlaces alternativos desde GitHub (comentados)
-es-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl
-en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
-fr-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.8.0/fr_core_news_lg-3.8.0-py3-none-any.whl
-pt-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_lg-3.8.0/pt_core_news_lg-3.8.0-py3-none-any.whl
+# es-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl
+# en-core-web-lg @ https://github.com/explosion/spacy-models/releases/download/en_core_web_lg-3.8.0/en_core_web_lg-3.8.0-py3-none-any.whl
+# fr-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_lg-3.8.0/fr_core_news_lg-3.8.0-py3-none-any.whl
+# pt-core-news-lg @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_lg-3.8.0/pt_core_news_lg-3.8.0-py3-none-any.whl
+
+
+es-core-news-md @ https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl
+en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl
+fr-core-news-md @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_md-3.8.0/fr_core_news_md-3.8.0-py3-none-any.whl
+pt-core-news-md @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_md-3.8.0/pt_core_news_md-3.8.0-py3-none-any.whl
+
 
 numpy
 networkx
@@ -29,7 +36,7 @@ odfpy
 
 ################
 pillow
-plotly
+# plotly
 pydantic
 python-dateutil
 pandas
@@ -49,7 +56,7 @@ reportlab
 #spacy=3.8.0
 #spacy
 spacy-streamlit
-seaborn
+# seaborn
 squarify
 
 
@@ -63,10 +70,10 @@ streamlit-option-menu
 streamlit-aggrid
 
 scipy
-sentencepiece
+# sentencepiece
 scikit-learn
 svglib
-transformers
-torch
+# transformers
+# torch
 tqdm
 thinc

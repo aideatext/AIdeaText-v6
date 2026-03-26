@@ -1,0 +1,13 @@
+# Entornos virtuales
+aideatextenv/
+venv/
+.env
+__pycache__/
+*.pyc
+
+# Archivos de certificados y logs
+*.pem
+*.log
+
+# Archivos temporales de SO
+.DS_Store

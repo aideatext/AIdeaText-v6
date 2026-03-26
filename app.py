@@ -25,7 +25,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Importaciones locales
 from translations import get_translations, get_landing_translations
 from session_state import initialize_session_state
+
 from modules.ui.ui import main as ui_main
+
 from modules.utils.spacy_utils import load_spacy_models
 from modules.utils.widget_utils import generate_unique_key
 

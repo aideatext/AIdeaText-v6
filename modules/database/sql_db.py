@@ -1,329 +1,119 @@
-# modules/database/sql_db.py
-
-from .database_init import get_container
-from datetime import datetime, timezone
+import os
+import pg8000.native
 import logging
-import bcrypt
-import uuid
-from bson import json_util  # ← CORREGIDO: así se importa correctamente
-import json  # ← Necesario para json.loads()
-
+import json
+from .database_init import get_pg_connection, release_pg_connection
 
 logger = logging.getLogger(__name__)
 
-#########################################
-def get_user(username, role=None):
-    container = get_container("users")
-    try:
-        query = f"SELECT * FROM c WHERE c.id = '{username}'"
-        if role:
-            query += f" AND c.role = '{role}'"
-        items = list(container.query_items(query=query))
-        return items[0] if items else None
-    except Exception as e:
-        logger.error(f"Error al obtener usuario {username}: {str(e)}")
+def execute_query(query, params=None, fetch=True):
+    """Ejecuta una consulta en PostgreSQL usando pg8000.native"""
+    conn = get_pg_connection()
+    if not conn:
         return None
+    try:
+        # IMPORTANTE: pg8000.native usa parámetros posicionales en el SQL 
+        # pero la función run los recibe como argumentos. 
+        # Cambiamos los %s por marcadores que pg8000 entienda.
+        
+        # Ajustamos el query de %s a :1, :2, etc. para pg8000
+        formatted_query = query
+        if params:
+            for i in range(len(params)):
+                formatted_query = formatted_query.replace("%s", f":{i+1}", 1)
+            
+            # Pasamos los parámetros como un diccionario para la sintaxis :n
+            param_dict = {f"{i+1}": v for i, v in enumerate(params)}
+            result = conn.run(formatted_query, **param_dict)
+        else:
+            result = conn.run(formatted_query)
+        
+        if fetch and result:
+            columns = [column['name'] for column in conn.columns]
+            return [dict(zip(columns, row)) for row in result]
+        return result
+    except Exception as e:
+        logger.error(f"Error ejecutando consulta SQL: {e}")
+        return None
+    finally:
+        release_pg_connection(conn)
 
+# --- BÚSQUEDA DE USUARIOS ---
+def get_user(username, role=None):
+    if role:
+        query = "SELECT * FROM users WHERE id = %s AND role = %s"
+        result = execute_query(query, (username, role))
+    else:
+        query = "SELECT * FROM users WHERE id = %s"
+        result = execute_query(query, (username,))
+    return result[0] if result else None
 
-#########################################
 def get_admin_user(username):
     return get_user(username, role='Administrador')
 
-#########################################
 def get_student_user(username):
     return get_user(username, role='Estudiante')
 
-#########################################
 def get_teacher_user(username):
     return get_user(username, role='Profesor')
 
-#########################################
+# --- CREACIÓN DE USUARIOS ---
 def create_user(username, password, role, additional_info=None):
-    """Crea un nuevo usuario"""
-    container = get_container("users")
-    if not container:
-        logger.error("No se pudo obtener el contenedor de usuarios")
-        return False
-        
-    try:
-        user_data = {
-            'id': username,
-            'password': password,
-            'role': role,
-            'timestamp': datetime.now(timezone.utc),  # ← Se mantiene como datetime
-            'additional_info': additional_info or {},
-            'partitionKey': username
-        }
-        
-        # Convertir usando json_util antes de enviar a Cosmos DB
-        user_data_json = json.loads(json_util.dumps(user_data))
-        
-        # Crear item con los datos convertidos
-        container.create_item(body=user_data_json)
-        logger.info(f"Usuario {role} creado: {username}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error al crear usuario {role}: {str(e)}")
-        return False
+    query = """
+        INSERT INTO users (id, password, role, full_name, email, created_at) 
+        VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+    """
+    full_name = additional_info.get('full_name') if additional_info else None
+    email = additional_info.get('email') if additional_info else None
+    return execute_query(query, (username, password, role, full_name, email), fetch=False)
 
-#########################################
 def create_student_user(username, password, additional_info=None):
     return create_user(username, password, 'Estudiante', additional_info)
 
-#########################################
 def create_teacher_user(username, password, additional_info=None):
     return create_user(username, password, 'Profesor', additional_info)
 
-#########################################
 def create_admin_user(username, password, additional_info=None):
     return create_user(username, password, 'Administrador', additional_info)
 
-#########################################
+# --- GESTIÓN DE SESIONES ---
 def record_login(username):
-    """Registra el inicio de sesión de un usuario"""
-    try:
-        container = get_container("users_sessions")
-        if not container:
-            logger.error("No se pudo obtener el contenedor users_sessions")
-            return None
+    query = "INSERT INTO users_sessions (username, login_time, type) VALUES (%s, CURRENT_TIMESTAMP, 'login') RETURNING id"
+    result = execute_query(query, (username,))
+    return result[0]['id'] if result else None
 
-        session_id = str(uuid.uuid4())
-        session_doc = {
-            "id": session_id,
-            "type": "session",
-            "username": username,
-            "loginTime": datetime.now(timezone.utc),  # ← Se mantiene como datetime
-            "additional_info": {},
-            "partitionKey": username
-        }
-
-        # Convertir usando json_util
-        session_json = json.loads(json_util.dumps(session_doc))
-        
-        result = container.create_item(body=session_json)
-        logger.info(f"Sesión {session_id} registrada para {username}")
-        return session_id
-    except Exception as e:
-        logger.error(f"Error registrando login: {str(e)}")
-        return None
-
-#########################################
 def record_logout(username, session_id):
-    """Registra el cierre de sesión y calcula la duración"""
-    try:
-        container = get_container("users_sessions")
-        if not container:
-            logger.error("No se pudo obtener el contenedor users_sessions")
-            return False
+    query = "UPDATE users_sessions SET logout_time = CURRENT_TIMESTAMP WHERE id = %s AND username = %s"
+    return execute_query(query, (session_id, username), fetch=False)
 
-        query = "SELECT * FROM c WHERE c.id = @id AND c.username = @username"
-        params = [
-            {"name": "@id", "value": session_id},
-            {"name": "@username", "value": username}
-        ]
-        
-        items = list(container.query_items(
-            query=query,
-            parameters=params
-        ))
-
-        if not items:
-            logger.warning(f"Sesión no encontrada: {session_id}")
-            return False
-
-        session = items[0]
-        login_time = datetime.fromisoformat(session['loginTime'].rstrip('Z'))
-        logout_time = datetime.now(timezone.utc)
-        duration = int((logout_time - login_time).total_seconds())
-
-        session.update({
-            "logoutTime": logout_time.isoformat(),
-            "sessionDuration": duration,
-            "partitionKey": username
-        })
-
-        container.upsert_item(body=session)
-        logger.info(f"Sesión {session_id} cerrada para {username}, duración: {duration}s")
-        return True
-    except Exception as e:
-        logger.error(f"Error registrando logout: {str(e)}")
-        return False
-
-#########################################
-def get_recent_sessions(limit=10):
-    """Obtiene las sesiones más recientes"""
-    try:
-        container = get_container("users_sessions")
-        if not container:
-            logger.error("No se pudo obtener el contenedor users_sessions")
-            return []
-
-        query = """
-        SELECT c.username, c.loginTime, c.logoutTime, c.sessionDuration
-        FROM c
-        WHERE c.type = 'session'
-        ORDER BY c.loginTime DESC
-        OFFSET 0 LIMIT @limit
-        """
-        
-        sessions = list(container.query_items(
-            query=query,
-            parameters=[{"name": "@limit", "value": limit}],
-            enable_cross_partition_query=True  # Agregar este parámetro
-        ))
-
-        clean_sessions = []
-        for session in sessions:
-            try:
-                clean_sessions.append({
-                    "username": session["username"],
-                    "loginTime": session["loginTime"],
-                    "logoutTime": session.get("logoutTime", "Activo"),
-                    "sessionDuration": session.get("sessionDuration", 0)
-                })
-            except KeyError as e:
-                logger.warning(f"Sesión con datos incompletos: {e}")
-                continue
-
-        return clean_sessions
-    except Exception as e:
-        logger.error(f"Error obteniendo sesiones recientes: {str(e)}")
-        return []
-
-#########################################
-def get_user_total_time(username):
-    """Obtiene el tiempo total que un usuario ha pasado en la plataforma"""
-    try:
-        container = get_container("users_sessions")
-        if not container:
-            return None
-
-        query = """
-        SELECT VALUE SUM(c.sessionDuration)
-        FROM c
-        WHERE c.type = 'session'
-        AND c.username = @username
-        AND IS_DEFINED(c.sessionDuration)
-        """
-        
-        result = list(container.query_items(
-            query=query,
-            parameters=[{"name": "@username", "value": username}]
-        ))
-
-        return result[0] if result and result[0] is not None else 0
-    except Exception as e:
-        logger.error(f"Error obteniendo tiempo total: {str(e)}")
-        return 0
-
-#########################################
+# --- MANTENIMIENTO ---
 def update_student_user(username, new_info):
-    container = get_container("users") 
-    try:
-        user = get_student_user(username)
-        if user:
-            user['additional_info'].update(new_info)
-            user['partitionKey'] = username
-            container.upsert_item(body=user)
-            logger.info(f"Información del estudiante actualizada: {username}")
-            return True
-        else:
-            logger.warning(f"Intento de actualizar estudiante no existente: {username}")
-            return False
-    except Exception as e:
-        logger.error(f"Error al actualizar información del estudiante {username}: {str(e)}")
-        return False
+    if not new_info: return False
+    set_clauses = [f"{k} = %s" for k in new_info.keys()]
+    params = list(new_info.values()) + [username]
+    query = f"UPDATE users SET {', '.join(set_clauses)} WHERE id = %s"
+    return execute_query(query, params, fetch=False)
 
-#########################################
 def delete_student_user(username):
-    container = get_container("users")
-    try:
-        user = get_student_user(username)
-        if user:
-            # El ID es suficiente para eliminación ya que partitionKey está en el documento
-            container.delete_item(item=user['id'])
-            logger.info(f"Estudiante eliminado: {username}")
-            return True
-        else:
-            logger.warning(f"Intento de eliminar estudiante no existente: {username}")
-            return False
-    except Exception as e:
-        logger.error(f"Error al eliminar estudiante {username}: {str(e)}")
-        return False
+    return execute_query("DELETE FROM users WHERE id = %s", (username,), fetch=False)
 
-#########################################
+# --- SOLICITUDES Y FEEDBACK ---
 def store_application_request(name, lastname, email, institution, current_role, desired_role, reason):
-    """Almacena una solicitud de aplicación"""
-    try:
-        # Obtener el contenedor usando get_container() que sí funciona
-        container = get_container("application_requests")
-        if not container:
-            logger.error("No se pudo obtener el contenedor de solicitudes")
-            return False
+    query = "INSERT INTO application_requests (username, request_type, status, details, timestamp) VALUES (%s, %s, 'pending', %s, CURRENT_TIMESTAMP)"
+    details = json.dumps({"name": name, "lastname": lastname, "institution": institution, "current_role": current_role, "reason": reason})
+    return execute_query(query, (email, desired_role, details), fetch=False)
 
-        # Crear documento con la solicitud
-        # Nótese que incluimos email como partition key en el cuerpo del documento
-        application_request = {
-            "id": str(uuid.uuid4()),
-            "name": name,
-            "lastname": lastname,
-            "email": email,
-            "institution": institution,
-            "current_role": current_role,
-            "desired_role": desired_role,
-            "reason": reason,
-            "requestDate": datetime.utcnow().isoformat(),
-            # El campo para partition key debe estar en el documento
-            "partitionKey": email
-        }
-        
-        # Crear el item en el contenedor - sin el parámetro enable_cross_partition_query
-        container.create_item(
-            body=application_request  # Solo pasamos el body
-        )
-        logger.info(f"Solicitud de aplicación almacenada para: {email}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error al almacenar la solicitud de aplicación: {str(e)}")
-        logger.error(f"Detalles del error: {str(e)}")
-        return False
-
-
-################################################################
 def store_student_feedback(username, name, email, feedback):
-    """Almacena el feedback de un estudiante"""
-    try:
-        # Obtener el contenedor - verificar disponibilidad
-        logger.info(f"Intentando obtener contenedor user_feedback para usuario: {username}")
-        container = get_container("user_feedback")
-        if not container:
-            logger.error("No se pudo obtener el contenedor user_feedback")
-            return False
+    query = "INSERT INTO student_feedback (username, feedback_text, category, timestamp) VALUES (%s, %s, 'Estudiante', CURRENT_TIMESTAMP)"
+    full_feedback = f"De: {name} ({email}) - Msg: {feedback}"
+    return execute_query(query, (username, full_feedback), fetch=False)
 
-        # Crear documento de feedback - asegurar que el username esté como partition key
-        feedback_item = {
-            "id": str(uuid.uuid4()),
-            "username": username,  # Campo regular
-            "name": name,
-            "email": email,
-            "feedback": feedback,
-            "role": "Estudiante",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "partitionKey": username  # Campo de partición
-        }
+# --- REPORTES ---
+def get_recent_sessions(limit=10):
+    query = "SELECT username, login_time as \"loginTime\", logout_time as \"logoutTime\" FROM users_sessions ORDER BY login_time DESC LIMIT %s"
+    return execute_query(query, (limit,))
 
-        # Crear el item - sin el parámetro enable_cross_partition_query
-        logger.info(f"Intentando almacenar feedback para usuario: {username}")
-        result = container.create_item(
-            body=feedback_item  # Solo el body, no parámetros adicionales
-        )
-        
-        logger.info(f"Feedback almacenado exitosamente para el usuario: {username}")
-        return True
-
-    except Exception as e:
-        logger.error(f"Error al almacenar el feedback del estudiante {username}")
-        logger.error(f"Detalles del error: {str(e)}")
-        return False
+def get_user_total_time(username):
+    query = "SELECT SUM(EXTRACT(EPOCH FROM (logout_time - login_time))) / 60 as total FROM users_sessions WHERE username = %s"
+    result = execute_query(query, (username,))
+    return result[0]['total'] if result and result[0]['total'] else 0
