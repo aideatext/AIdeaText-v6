@@ -103,86 +103,66 @@ def fig_to_bytes(fig):
 ###########################################################
 def perform_semantic_analysis(text: str, nlp, lang_code: str) -> dict:
     """
-    Realiza el análisis semántico completo del texto.
-    Ajustado para el Piloto UNIFE 2026 (CRA + M1/M2)
+    Versión optimizada UNIFE 2026: 
+    Maneja archivos grandes (0.9MB+) limitando a Top 30 conceptos.
     """
     if not text or not nlp or not lang_code:
-        logger.error("Parámetros inválidos para el análisis semántico")
         return {"success": False, "error": "Parámetros inválidos"}
 
     try:
-        logger.info(f"Iniciando análisis semántico — idioma: {lang_code}")
-
+        logger.info(f"Procesando documento extenso — idioma: {lang_code}")
+        
+        # 1. Procesamiento inicial con spaCy
         doc = nlp(text)
-        if not doc:
-            return {"success": False, "error": "Error al procesar texto con spaCy"}
-
-        # 1. Identificar conceptos (Se mantiene para la UI visual como listados)
+        
+        # 2. Identificar Top 30 conceptos (Filtro de Densidad)
         stopwords = get_custom_stopwords(lang_code)
-        key_concepts = identify_key_concepts(doc, stopwords=stopwords)
+        # Obtenemos los 30 más relevantes para que el grafo sea legible
+        key_concepts = identify_key_concepts(doc, stopwords=stopwords)[:30]
 
         if not key_concepts:
             return {"success": False, "error": "No se identificaron conceptos clave"}
 
-        # RESTAURADO: Identificar solo los TOP 30 conceptos más importantes
-        # Esto es lo que acelera el proceso y limpia la lista
-        key_concepts = identify_key_concepts(doc, stopwords=stopwords)[:30] 
-
-        if not key_concepts:
-            return {"success": False, "error": "No se identificaron conceptos clave"}
-
-        # GENERACIÓN DEL GRAFO: Ahora limitado a esos 30 conceptos
-        # pero manteniendo el filtro de NOUN/PROPN que pediste
+        # 3. Generar el Grafo (Solo Sustantivos POS)
+        # La función interna create_concept_graph ya filtra NOUN/PROPN
         concept_graph_nx = create_concept_graph(doc, lang_code=lang_code)
         
-        # FILTRADO CRÍTICO: Mantener solo los nodos que están en el Top 30
+        # 4. FILTRADO CRÍTICO DE NODOS: 
+        # Eliminamos todo lo que no esté en el Top 30 para evitar la "pelota de pelos"
         nodes_to_keep = [c[0] for c in key_concepts]
         nodes_to_remove = [n for n in concept_graph_nx.nodes if n not in nodes_to_keep]
         concept_graph_nx.remove_nodes_from(nodes_to_remove)
 
-        # 3. Calcular Métricas M2 y preparar serialización
+        # 5. Métricas M2 (Robustez)
         if _METRICS_AVAILABLE:
             m2_metrics = calculate_M2(concept_graph_nx)
-            gdict      = graph_to_dict(concept_graph_nx)
+            gdict = graph_to_dict(concept_graph_nx)
         else:
-            m2_metrics = {}
-            gdict      = {}
+            m2_metrics, gdict = {}, {}
 
-        # 4. Generar la imagen PNG para la interfaz de usuario
+        # 6. Visualización limpia
         plt.clf()
-        concept_graph_fig = visualize_concept_graph(concept_graph_nx, lang_code)
-        graph_bytes       = fig_to_bytes(concept_graph_fig)
-        plt.close(concept_graph_fig)
-        plt.close('all')
+        fig = visualize_concept_graph(concept_graph_nx, lang_code)
+        graph_bytes = fig_to_bytes(fig)
+        plt.close(fig)
 
-        if not graph_bytes:
-            return {"success": False, "error": "Error al generar visualización"}
-
-        logger.info(
-            f"Análisis completado — nodos: {concept_graph_nx.number_of_nodes()}, "
-            f"M2_density: {m2_metrics.get('M2_density', 'n/a')}"
-        )
-
-        # 5. Retornar el paquete completo para Frontend y Backend
+        # 7. RETORNO COMPLETO (Arregla el error del Tutor Virtual)
         return {
             "success": True,
-            "text": text, # NECESARIO PARA EL SIDEBAR
+            "text": text,                # <--- Conexión necesaria para el Sidebar
             "key_concepts": key_concepts,
             "concept_graph": graph_bytes,
             "concept_graph_nx": concept_graph_nx,
-            "graph_data": gdict, # NECESARIO PARA EL SIDEBAR
-            "metrics": {         # ESTRUCTURA QUE BUSCA EL SIDEBAR
+            "graph_dict": gdict,
+            "metrics": {                 # <--- Estructura necesaria para el Sidebar
                 "key_concepts": key_concepts,
                 "M2": m2_metrics
             }
         }
 
     except Exception as e:
-        logger.error(f"Error en perform_semantic_analysis: {e}")
-        plt.close('all')
+        logger.error(f"Error en análisis semántico: {str(e)}", exc_info=True)
         return {"success": False, "error": str(e)}
-    finally:
-        plt.close('all')
 
 ############################################################ 
 
