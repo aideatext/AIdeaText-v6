@@ -124,12 +124,21 @@ def perform_semantic_analysis(text: str, nlp, lang_code: str) -> dict:
         if not key_concepts:
             return {"success": False, "error": "No se identificaron conceptos clave"}
 
-        # 2. Crear Grafo (CORRECCIÓN AQUÍ: Ya no pasamos key_concepts)
-        # El grafo se genera extrayendo estrictamente SUSTANTIVOS y NOMBRES PROPIOS
-        concept_graph_nx = create_concept_graph(doc, lang_code=lang_code)
+        # RESTAURADO: Identificar solo los TOP 30 conceptos más importantes
+        # Esto es lo que acelera el proceso y limpia la lista
+        key_concepts = identify_key_concepts(doc, stopwords=stopwords)[:30] 
 
-        if not concept_graph_nx.nodes():
-            return {"success": False, "error": "No se pudo crear el grafo de conceptos"}
+        if not key_concepts:
+            return {"success": False, "error": "No se identificaron conceptos clave"}
+
+        # GENERACIÓN DEL GRAFO: Ahora limitado a esos 30 conceptos
+        # pero manteniendo el filtro de NOUN/PROPN que pediste
+        concept_graph_nx = create_concept_graph(doc, lang_code=lang_code)
+        
+        # FILTRADO CRÍTICO: Mantener solo los nodos que están en el Top 30
+        nodes_to_keep = [c[0] for c in key_concepts]
+        nodes_to_remove = [n for n in concept_graph_nx.nodes if n not in nodes_to_keep]
+        concept_graph_nx.remove_nodes_from(nodes_to_remove)
 
         # 3. Calcular Métricas M2 y preparar serialización
         if _METRICS_AVAILABLE:
@@ -156,12 +165,16 @@ def perform_semantic_analysis(text: str, nlp, lang_code: str) -> dict:
 
         # 5. Retornar el paquete completo para Frontend y Backend
         return {
-            "success":          True,
-            "key_concepts":     key_concepts,
-            "concept_graph":    graph_bytes,       # bytes PNG para st.image
-            "concept_graph_nx": concept_graph_nx,  # Objeto NetworkX vivo para cálculo de M1 en memoria
-            "graph_dict":       gdict,             # Diccionario serializado para DocumentDB
-            "M2":               m2_metrics,        # JSON de métricas estructurales
+            "success": True,
+            "text": text, # NECESARIO PARA EL SIDEBAR
+            "key_concepts": key_concepts,
+            "concept_graph": graph_bytes,
+            "concept_graph_nx": concept_graph_nx,
+            "graph_data": gdict, # NECESARIO PARA EL SIDEBAR
+            "metrics": {         # ESTRUCTURA QUE BUSCA EL SIDEBAR
+                "key_concepts": key_concepts,
+                "M2": m2_metrics
+            }
         }
 
     except Exception as e:
