@@ -2,6 +2,8 @@
 import streamlit as st
 from .chat_process import ChatProcessor
 from ..database.chat_mongo_db import store_chat_history
+from ..metrics.m1_m2 import calculate_M1, interpret_M1  # <--- AÑADIR
+from ..text_analysis.semantic_analysis import create_concept_graph # <--- AÑADIR
 import logging
 
 logger = logging.getLogger(__name__)
@@ -40,6 +42,43 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                         st.error("Error al configurar el análisis. Recargue el documento.")
                         return
 
+            if st.session_state.sidebar_messages:
+                if st.button("🏁 Finalizar Sesión y Calcular Coherencia (M1)"):
+                    with st.spinner("Analizando consistencia transmodal..."):
+                        try:
+                            # 1. Obtener el Grafo de la Tesis (Ya debe estar en session_state)
+                            # Recuperamos el objeto nx.Graph que guardamos en perform_semantic_analysis
+                            G_Escrito = st.session_state.semantic_agent_data.get('concept_graph_nx')
+                            
+                            if G_Escrito:
+                                # 2. Procesar el texto del Chat (Tutor Virtual)
+                                # Unimos solo los mensajes del usuario y asistente
+                                full_chat_text = " ".join([m['content'] for m in st.session_state.sidebar_messages])
+                                
+                                # 3. Generar Grafo del Tutor (Solo Sustantivos - CRA)
+                                # Usamos el modelo nlp que ya tenemos en sesión
+                                doc_TutorVirtual = st.session_state.nlp(full_chat_text)
+                                G_TutorVirtual = create_concept_graph(doc_TutorVirtual, lang_code=lang_code)
+                                
+                                # 4. Calcular M1
+                                m1_score = calculate_M1(G_Escrito, G_TutorVirtual, st.session_state.nlp)
+                                res_m1 = interpret_M1(m1_score)
+                                
+                                # 5. Mostrar resultado inmediato al estudiante (Feedback Formativo)
+                                st.metric(label="Índice de Coherencia (M1)", value=f"{m1_score:.2f}")
+                                st.toast(f"Coherencia {res_m1['level']}: {res_m1['message']}", icon="🧠")
+                                
+                                # 6. Guardar en base de datos (Postgres/Mongo)
+                                # Aquí llamaríamos a store_analysis_with_metrics configurado para 'oral'
+                                st.session_state['last_m1_result'] = m1_score
+                                st.success("Análisis guardado. Tu asesor podrá revisar tu progreso.")
+                            else:
+                                st.error("No hay un análisis de tesis previo para comparar.")
+                                
+                        except Exception as e:
+                            logger.error(f"Error al calcular M1: {e}")
+                            st.error("No se pudo completar el análisis de coherencia.")
+            
             with st.expander("💬 Asistente de Análisis", expanded=True):
                 if 'sidebar_messages' not in st.session_state:
                     initial_msg = {

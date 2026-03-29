@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Solo configurar si no hay handlers ya configurados
+# 3. Solo configurar si no hay handlers ya configurados
 logger = logging.getLogger(__name__)
-    
+
 # 4. Importaciones locales
 from .stopwords import (
     process_text,
@@ -25,6 +25,12 @@ from .stopwords import (
     get_stopwords_for_spacy
 )
 
+try:
+    from modules.metrics.m1_m2 import calculate_M2, graph_to_dict
+    _METRICS_AVAILABLE = True
+except ImportError:
+    _METRICS_AVAILABLE = False
+    logger.warning("modules.metrics.m1_m2 no disponible en semantic_analysis.")
 
 # Define colors for grammatical categories
 POS_COLORS = {
@@ -95,90 +101,75 @@ def fig_to_bytes(fig):
         return None
         
 ###########################################################
-def perform_semantic_analysis(text, nlp, lang_code):
+def perform_semantic_analysis(text: str, nlp, lang_code: str) -> dict:
     """
     Realiza el análisis semántico completo del texto.
+    Ajustado para el Piloto UNIFE 2026 (CRA + M1/M2)
     """
     if not text or not nlp or not lang_code:
         logger.error("Parámetros inválidos para el análisis semántico")
-        return {
-            'success': False,
-            'error': 'Parámetros inválidos'
-        }
-        
+        return {"success": False, "error": "Parámetros inválidos"}
+
     try:
-        logger.info(f"Starting semantic analysis for language: {lang_code}")
-        
-        # Procesar texto y remover stopwords
+        logger.info(f"Iniciando análisis semántico — idioma: {lang_code}")
+
         doc = nlp(text)
         if not doc:
-            logger.error("Error al procesar el texto con spaCy")
-            return {
-                'success': False,
-                'error': 'Error al procesar el texto'
-            }
-        
-        # Identificar conceptos clave
-        logger.info("Identificando conceptos clave...")
+            return {"success": False, "error": "Error al procesar texto con spaCy"}
+
+        # 1. Identificar conceptos (Se mantiene para la UI visual como listados)
         stopwords = get_custom_stopwords(lang_code)
         key_concepts = identify_key_concepts(doc, stopwords=stopwords)
-        
+
         if not key_concepts:
-            logger.warning("No se identificaron conceptos clave")
-            return {
-                'success': False,
-                'error': 'No se pudieron identificar conceptos clave'
-            }
-        
-        # Crear grafo de conceptos
-        logger.info(f"Creando grafo de conceptos con {len(key_concepts)} conceptos...")
-        concept_graph = create_concept_graph(doc, key_concepts)
-        
-        if not concept_graph.nodes():
-            logger.warning("Se creó un grafo vacío")
-            return {
-                'success': False,
-                'error': 'No se pudo crear el grafo de conceptos'
-            }
-        
-        # Visualizar grafo
-        logger.info("Visualizando grafo...")
-        plt.clf()  # Limpiar figura actual
-        concept_graph_fig = visualize_concept_graph(concept_graph, lang_code)
-        
-        # Convertir a bytes
-        logger.info("Convirtiendo grafo a bytes...")
-        graph_bytes = fig_to_bytes(concept_graph_fig)
-        
-        if not graph_bytes:
-            logger.error("Error al convertir grafo a bytes")
-            return {
-                'success': False,
-                'error': 'Error al generar visualización'
-            }
-        
-        # Limpiar recursos
+            return {"success": False, "error": "No se identificaron conceptos clave"}
+
+        # 2. Crear Grafo (CORRECCIÓN AQUÍ: Ya no pasamos key_concepts)
+        # El grafo se genera extrayendo estrictamente SUSTANTIVOS y NOMBRES PROPIOS
+        concept_graph_nx = create_concept_graph(doc, lang_code=lang_code)
+
+        if not concept_graph_nx.nodes():
+            return {"success": False, "error": "No se pudo crear el grafo de conceptos"}
+
+        # 3. Calcular Métricas M2 y preparar serialización
+        if _METRICS_AVAILABLE:
+            m2_metrics = calculate_M2(concept_graph_nx)
+            gdict      = graph_to_dict(concept_graph_nx)
+        else:
+            m2_metrics = {}
+            gdict      = {}
+
+        # 4. Generar la imagen PNG para la interfaz de usuario
+        plt.clf()
+        concept_graph_fig = visualize_concept_graph(concept_graph_nx, lang_code)
+        graph_bytes       = fig_to_bytes(concept_graph_fig)
         plt.close(concept_graph_fig)
         plt.close('all')
-        
-        result = {
-            'success': True,
-            'key_concepts': key_concepts,
-            'concept_graph': graph_bytes
-        }
-        
-        logger.info("Análisis semántico completado exitosamente")
-        return result
-        
-    except Exception as e:
-        logger.error(f"Error in perform_semantic_analysis: {str(e)}")
-        plt.close('all')  # Asegurarse de limpiar recursos
+
+        if not graph_bytes:
+            return {"success": False, "error": "Error al generar visualización"}
+
+        logger.info(
+            f"Análisis completado — nodos: {concept_graph_nx.number_of_nodes()}, "
+            f"M2_density: {m2_metrics.get('M2_density', 'n/a')}"
+        )
+
+        # 5. Retornar el paquete completo para Frontend y Backend
         return {
-            'success': False,
-            'error': str(e)
+            "success":          True,
+            "key_concepts":     key_concepts,
+            "concept_graph":    graph_bytes,       # bytes PNG para st.image
+            "concept_graph_nx": concept_graph_nx,  # Objeto NetworkX vivo para cálculo de M1 en memoria
+            "graph_dict":       gdict,             # Diccionario serializado para DocumentDB
+            "M2":               m2_metrics,        # JSON de métricas estructurales
         }
+
+    except Exception as e:
+        logger.error(f"Error en perform_semantic_analysis: {e}")
+        plt.close('all')
+        return {"success": False, "error": str(e)}
     finally:
-        plt.close('all')  # Asegurar limpieza incluso si hay error
+        plt.close('all')
 
 ############################################################ 
 
@@ -234,54 +225,54 @@ def identify_key_concepts(doc, stopwords, min_freq=2, min_length=3):
 
 ########################################################################
 
-def create_concept_graph(doc, key_concepts):
+def create_concept_graph(doc, lang_code='es'):
     """
-    Crea un grafo de relaciones entre conceptos, ignorando entidades.
-    Args:
-        doc: Documento procesado por spaCy
-        key_concepts: Lista de tuplas (concepto, frecuencia)
-    Returns:
-        nx.Graph: Grafo de conceptos
+    Crea un grafo de red semántica basado en la co-ocurrencia de conceptos.
+    Ajuste UNIFE 2026: Filtra estrictamente SUSTANTIVOS (NOUN/PROPN) para CRA.
     """
     try:
         G = nx.Graph()
         
-        # Crear un conjunto de conceptos clave para búsqueda rápida
-        concept_words = {concept[0].lower() for concept in key_concepts}
+        # 1. Extraer solo Sustantivos y Nombres Propios (Filtrado POS)
+        allowed_pos = ['NOUN', 'PROPN']
         
-        # Crear conjunto de tokens que son parte de entidades
-        entity_tokens = set()
-        for ent in doc.ents:
-            entity_tokens.update(token.i for token in ent)
-        
-        # Añadir nodos al grafo
-        for concept, freq in key_concepts:
-            G.add_node(concept.lower(), weight=freq)
-        
-        # Analizar cada oración
-        for sent in doc.sents:
-            # Obtener conceptos en la oración actual, excluyendo entidades
-            current_concepts = []
-            for token in sent:
-                if (token.i not in entity_tokens and 
-                    token.lemma_.lower() in concept_words):
-                    current_concepts.append(token.lemma_.lower())
-            
-            # Crear conexiones entre conceptos en la misma oración
-            for i, concept1 in enumerate(current_concepts):
-                for concept2 in current_concepts[i+1:]:
-                    if concept1 != concept2:
-                        if G.has_edge(concept1, concept2):
-                            G[concept1][concept2]['weight'] += 1
-                        else:
-                            G.add_edge(concept1, concept2, weight=1)
-        
-        return G
-        
-    except Exception as e:
-        logger.error(f"Error en create_concept_graph: {str(e)}")
-        return nx.Graph()
+        # Obtenemos la lista de conceptos limpios
+        concepts = [
+            token.lemma_.lower() 
+            for token in doc 
+            if token.pos_ in allowed_pos 
+            and not token.is_stop 
+            and len(token.text) > 2 
+        ]
 
+        if not concepts:
+            return G
+
+        # 2. Contar frecuencia para el tamaño de los nodos
+        counts = Counter(concepts)
+        for concept, count in counts.items():
+            G.add_node(concept, weight=count)
+
+        # 3. Crear aristas por co-ocurrencia (ventana de contexto)
+        window_size = 5
+        for i in range(len(concepts)):
+            for j in range(i + 1, min(i + window_size, len(concepts))):
+                u, v = concepts[i], concepts[j]
+                if u != v:
+                    if G.has_edge(u, v):
+                        G[u][v]['weight'] += 1
+                    else:
+                        G.add_edge(u, v, weight=1)
+
+        # El return exitoso debe ir dentro del bloque try
+        return G
+
+    except Exception as e:
+        # Ahora el except sí tiene un try al cual referirse
+        logger.error(f"Error en create_concept_graph: {str(e)}")
+        # Devolvemos un grafo vacío para que la app no se rompa
+        return nx.Graph()
+    
 ###############################################################################
 
 def visualize_concept_graph(G, lang_code):
