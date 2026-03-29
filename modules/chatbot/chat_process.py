@@ -2,16 +2,52 @@
 import os
 import anthropic
 import logging
+import boto3
+import json  # Importante para procesar el secreto
+from botocore.exceptions import ClientError
 from typing import Generator
 
 logger = logging.getLogger(__name__)
 
+def get_secret():
+    """Recupera la API Key desde AWS Secrets Manager"""
+    secret_name = "AIdeaText/AWS/Prod/Key"
+    region_name = "us-east-2"
+
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        logger.error(f"Error crítico: No se pudo obtener el secreto de AWS: {e}")
+        raise e
+
+    # El secreto es un string JSON, hay que parsearlo
+    secret_data = json.loads(get_secret_value_response['SecretString'])
+    
+    # Retornamos la llave específica que configuraste en la consola
+    return secret_data.get("ANTHROPIC_API_KEY")
+
 class ChatProcessor:
     def __init__(self):
-        """Inicializa el procesador de chat con la API de Claude"""
-        self.client = anthropic.Anthropic(
-            api_key=os.environ.get("ANTHROPIC_API_KEY")
-        )
+        """Inicializa el procesador de chat con la API de Claude usando AWS Secrets"""
+        # --- ACTUALIZACIÓN AQUÍ ---
+        # Reemplazamos os.environ por la llamada a nuestra función de AWS
+        api_key = get_secret()
+        
+        if not api_key:
+            logger.error("La API Key de Anthropic no se encontró en el secreto de AWS")
+            raise ValueError("ANTHROPIC_API_KEY no configurada correctamente")
+
+        self.client = anthropic.Anthropic(api_key=api_key)
+        # --------------------------
+        
         self.conversation_history = []
         self.semantic_context = None
         self.current_lang = 'en'
