@@ -33,7 +33,7 @@ from ..studentact.student_activities_v2 import display_student_activities
 
 ##Importaciones desde la configuración de bases datos #######
 
-from ..database.backUp.sql_db import (
+from ..database.sql_db import (
     get_user,
     get_admin_user,
     get_student_user,

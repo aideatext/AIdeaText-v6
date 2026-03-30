@@ -46,7 +46,7 @@ from modules.discourse.discourse_interface import (
 
 from modules.database.database_init import initialize_database_connections
 
-from modules.database.backUp.sql_db import (
+from modules.database.sql_db import (
      get_user,
      get_admin_user,
      get_student_user,
