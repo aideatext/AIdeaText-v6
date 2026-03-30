@@ -112,7 +112,8 @@ def fig_to_bytes(fig, dpi=100):
 
 def compare_semantic_analysis(text1, text2, nlp, lang):
     """
-    Realiza el análisis semántico comparativo con escalado optimizado.
+    Realiza el análisis semántico comparativo sincronizado con semantic_analysis.
+    Optimizado para archivos grandes (UNIFE 2026).
     """
     try:
         COMPARE_GRAPH_TITLES = {
@@ -128,23 +129,30 @@ def compare_semantic_analysis(text1, text2, nlp, lang):
         titles = COMPARE_GRAPH_TITLES.get(lang, COMPARE_GRAPH_TITLES['en'])
         stopwords = get_custom_stopwords(lang)
         
-        # Procesamiento de documentos
+        # 1. Procesamiento de spaCy
         doc1 = nlp(text1)
         doc2 = nlp(text2)
         
-        # Sincronización con los filtros de semantic_analysis para evitar saturación
-        # Se aumenta ligeramente el filtro para archivos de 0.9MB en modo comparativo
+        # 2. Identificación de conceptos (Sincronizado y Reforzado)
+        # Aumentamos min_freq a 4 para comparativos de archivos pesados (>0.5MB)
         key_concepts1 = identify_key_concepts(doc1, stopwords=stopwords, min_freq=4, min_length=3)
         key_concepts2 = identify_key_concepts(doc2, stopwords=stopwords, min_freq=4, min_length=3)
 
         if not key_concepts1 or not key_concepts2:
-            raise ValueError("Conceptos insuficientes para la comparación")
+            raise ValueError("Conceptos insuficientes para generar la comparación")
 
-        G1 = create_concept_graph(doc1, key_concepts1)
-        G2 = create_concept_graph(doc2, key_concepts2)
+        # 3. Creación de Grafos (CRA)
+        G1 = create_concept_graph(doc1, lang_code=lang)
+        G2 = create_concept_graph(doc2, lang_code=lang)
         
-        # USAR LA FUNCIÓN OPTIMIZADA CON ESCALA MIN-MAX
-        # Esta llamada ya usa la lógica de 600 a 4000 que arreglamos hoy
+        # 4. Poda de Grafos (Mantener solo Top Conceptos para legibilidad)
+        for G, concepts in [(G1, key_concepts1), (G2, key_concepts2)]:
+            nodes_to_keep = [c[0] for c in concepts]
+            nodes_to_remove = [n for n in G.nodes if n not in nodes_to_keep]
+            G.remove_nodes_from(nodes_to_remove)
+
+        # 5. Visualización Optimizada (Llama a la función con escala Logarítmica Min-Max)
+        # Importante: visualize_concept_graph ya tiene el parche de 600 a 4000
         fig1 = visualize_concept_graph(G1, lang)
         fig1.suptitle(titles['doc1_network'], fontsize=14, fontweight='bold')
         
@@ -154,7 +162,7 @@ def compare_semantic_analysis(text1, text2, nlp, lang):
         return fig1, fig2, key_concepts1, key_concepts2
 
     except Exception as e:
-        logger.error(f"Error en comparación: {str(e)}")
+        logger.error(f"Error en comparación de discurso: {str(e)}")
         plt.close('all')
         raise
 
