@@ -6,6 +6,11 @@ from .database_init import get_pg_connection, release_pg_connection
 
 logger = logging.getLogger(__name__)
 
+
+
+
+
+
 def execute_query(query, params=None, fetch=True):
     """Ejecuta una consulta en PostgreSQL usando pg8000.native"""
     conn = get_pg_connection()
@@ -58,17 +63,30 @@ def get_teacher_user(username):
 # --- CREACIÓN DE USUARIOS (Añadiendo group_id) ---
 def create_user_expanded(username, password, full_name, role, institution, faculty, academic_stage, class_id, pilot_id, city, country):
     """
-    Crea un usuario con la estructura completa del piloto 2026.
+    Inserta el usuario en la tabla RDS usando la función execute_query existente.
     """
-    import bcrypt
-    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    
+    # El query usa %s porque tu execute_query ya se encarga de convertirlos a :1, :2, etc.
     query = """
         INSERT INTO users (id, password, full_name, role, institution, faculty, level, class_id, pilot_id, city, country)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
-    params = (username, hashed, full_name, role, institution, faculty, academic_stage, class_id, pilot_id, city, country)
-    return execute_commit(query, params)
+    
+    params = (
+        username, 
+        password, 
+        full_name, 
+        role, 
+        institution, 
+        faculty, 
+        academic_stage, 
+        class_id, 
+        pilot_id, 
+        city, 
+        country
+    )
+    
+    # Llamamos a tu función existente. fetch=False indica que es una operación de escritura.
+    return execute_query(query, params, fetch=False)
 
 ##############################################
 
