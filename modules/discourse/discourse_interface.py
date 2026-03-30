@@ -263,7 +263,7 @@ def display_discourse_results(result, lang_code, discourse_t):
         
         # Convertir a bytes
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=150, bbox_inches='tight')
+        plt.savefig(buf, format='png', dpi=100, bbox_inches='tight')
         buf.seek(0)
         
         # Botón de descarga
