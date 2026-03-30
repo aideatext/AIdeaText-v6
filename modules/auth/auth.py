@@ -37,19 +37,19 @@ def authenticate_user(username, password):
         if not user:
             return None
 
-        # Ya que tu sql_db.py devuelve diccionarios:
-        db_username = user.get('id')
+        # Obtenemos los datos del diccionario (resultado de execute_query en sql_db)
         db_password = user.get('password')
-        db_role = user.get('role')
-        db_group_id = user.get('group_id', 'GENERAL') # Valor por defecto
-
+        
         if verify_password(db_password, password):
-            # Guardamos el group_id en la sesión de Streamlit inmediatamente
-            st.session_state.group_id = db_group_id
-            st.session_state.username = db_username
-            st.session_state.role = db_role
+            # Sincronizamos la sesión de Streamlit con la jerarquía de la DB
+            st.session_state.username = user.get('id')
+            st.session_state.role = user.get('role')
+            st.session_state.group_id = user.get('group_id')
+            st.session_state.institution = user.get('institution')
+            st.session_state.academic_stage = user.get('academic_stage')
+            st.session_state.faculty = user.get('faculty') # <--- Nueva columna
             
-            return {'id': db_username, 'username': db_username, 'role': db_role, 'group_id': db_group_id}
+            return user # Retornamos el diccionario completo
         
         return None
     except Exception as e:
