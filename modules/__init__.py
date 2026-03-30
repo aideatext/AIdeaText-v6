@@ -81,7 +81,7 @@ def load_database_functions():
     )
 
     # Importar funciones SQL
-    from .database.sql_db import (
+    from .database.backUp.sql_db import (
         create_student_user,
         get_student_user,
         update_student_user,
@@ -102,7 +102,7 @@ def load_database_functions():
         delete_document,
     )
     
-    from .database.morphosintax_mongo_db import (
+    from .database.backUp.morphosintax_mongo_db import (
         store_student_morphosyntax_result,
         get_student_morphosyntax_analysis,
         update_student_morphosyntax_analysis,
@@ -127,7 +127,7 @@ def load_database_functions():
     )
 
     # Agregar nueva importación para current_situation
-    from .database.current_situation_mongo_db import (
+    from .database.backUp.current_situation_mongo_db import (
         store_current_situation_result,
         verify_storage,
         get_recent_sessions,

@@ -1,4 +1,4 @@
-from .database_init import get_pg_connection, release_pg_connection
+from ..database_init import get_pg_connection, release_pg_connection
 from datetime import datetime, timezone
 import logging
 import uuid

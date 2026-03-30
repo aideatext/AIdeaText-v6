@@ -23,7 +23,7 @@ from .morphosyntax_process import (
 
 from ..utils.widget_utils import generate_unique_key
 
-from ..database.morphosintax_mongo_db import store_student_morphosyntax_result
+from ..database.backUp.morphosintax_mongo_db import store_student_morphosyntax_result
 from ..database.chat_mongo_db import store_chat_history, get_chat_history
 
 # from ..database.morphosintaxis_export import export_user_interactions

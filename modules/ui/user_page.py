@@ -12,7 +12,7 @@ from ..semantic.semantic_interface import display_semantic_interface
 from ..discourse.discourse_interface import display_discourse_interface
 
 # --- IMPORTACIONES DE BASE DE DATOS (SQL para feedback) ---
-from ..database.sql_db import store_student_feedback
+from ..database.backUp.sql_db import store_student_feedback
 
 logger = logging.getLogger(__name__)
 

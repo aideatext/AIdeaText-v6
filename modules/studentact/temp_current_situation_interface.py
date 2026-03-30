@@ -58,7 +58,7 @@ def display_current_situation_interface(lang_code, nlp_models, t):
                         feedback = get_claude_feedback(metrics, text_input)
                         
                         # 4. Guardar los resultados
-                        from ..database.current_situation_mongo_db import store_current_situation_result
+                        from ..database.backUp.current_situation_mongo_db import store_current_situation_result
                         
                     if st.button(t.get('analyze_button', "Explorar mi escritura")):
                         with st.spinner(t.get('processing', "Analizando texto...")):
@@ -236,7 +236,7 @@ def show_recommendations(feedback, t):
                 st.markdown(exercises['description'])
                 
                 # Obtener el historial de ejercicios del estudiante
-                from ..database.current_situation_mongo_db import get_student_exercises_history
+                from ..database.backUp.current_situation_mongo_db import get_student_exercises_history
                 exercises_history = get_student_exercises_history(st.session_state.username)
                 
                 # Separar ejercicios en completados y pendientes
@@ -263,7 +263,7 @@ def show_recommendations(feedback, t):
                             type="primary"
                         ):
                             try:
-                                from ..database.current_situation_mongo_db import update_exercise_status
+                                from ..database.backUp.current_situation_mongo_db import update_exercise_status
                                 
                                 # Actualizar estado del ejercicio
                                 success = update_exercise_status(

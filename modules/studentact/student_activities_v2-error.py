@@ -17,7 +17,7 @@ import seaborn as sns
 import logging
 
 # Importaciones de la base de datos
-from ..database.morphosintax_mongo_db import get_student_morphosyntax_analysis
+from ..database.backUp.morphosintax_mongo_db import get_student_morphosyntax_analysis
 from ..database.semantic_mongo_db import get_student_semantic_analysis
 from ..database.discourse_mongo_db import get_student_discourse_analysis
 from ..database.chat_mongo_db import get_chat_history

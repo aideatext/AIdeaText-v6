@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Asumimos que estas funciones están disponibles a través de las importaciones en load_database_functions
-from .database.morphosintax_mongo_db import get_student_morphosyntax_analysis, get_student_morphosyntax_data
+from .database.backUp.morphosintax_mongo_db import get_student_morphosyntax_analysis, get_student_morphosyntax_data
 from .database.chat_db import get_chat_history
 
 def display_student_progress(username, lang_code, t):

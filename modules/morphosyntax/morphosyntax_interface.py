@@ -7,7 +7,7 @@ from spacy import displacy
 
 # Funciones de análisis y DB que ya tienes en tus módulos
 from ..morphosyntax.morphosyntax_process import perform_advanced_morphosyntactic_analysis
-from ..database.morphosyntax_iterative_mongo_db import (
+from ..database.backUp.morphosyntax_iterative_mongo_db import (
     store_student_morphosyntax_base,
     store_student_morphosyntax_iteration,
 )

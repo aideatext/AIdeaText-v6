@@ -24,7 +24,7 @@ from ..database.semantic_mongo_db import get_student_semantic_analysis
 from ..database.discourse_mongo_db import get_student_discourse_analysis
 
 from ..database.chat_mongo_db import get_chat_history
-from ..database.claude_recommendations_mongo_db import get_claude_recommendations
+from ..database.backUp.claude_recommendations_mongo_db import get_claude_recommendations
 
 # Importar la función generate_unique_key
 from ..utils.widget_utils import generate_unique_key
