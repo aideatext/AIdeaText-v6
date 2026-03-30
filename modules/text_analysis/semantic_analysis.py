@@ -1,5 +1,4 @@
 # modules/text_analysis/semantic_analysis.py
-#Prueba_mundial
 
 # 1. Importaciones estándar del sistema
 import logging
@@ -298,9 +297,6 @@ def create_concept_graph(doc, lang_code='es'):
 ###############################################################################
 
 def visualize_concept_graph(G, lang_code, node_scale=None):
-    import numpy as np
-    import networkx as nx
-    import matplotlib.pyplot as plt
 
     GRAPH_LABELS = {
         'es': {'concept_network': 'Relaciones entre conceptos clave', 'concept_centrality': 'Centralidad'},
@@ -345,7 +341,6 @@ def create_entity_graph(entities):
             for entity2 in entity_list[i+1:]:
                 G.add_edge(entity1, entity2)
     return G
-
 
 #############################################################
 def visualize_entity_graph(G, lang_code):
