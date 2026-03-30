@@ -7,6 +7,7 @@ import base64
 from collections import Counter, defaultdict
 
 # 2. Importaciones de terceros
+import numpy as np
 import streamlit as st
 import spacy
 import networkx as nx
