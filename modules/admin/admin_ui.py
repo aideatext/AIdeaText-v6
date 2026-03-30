@@ -55,23 +55,36 @@ def admin_page():
         if csv_file:
             df = pd.read_csv(csv_file)
             st.dataframe(df.head()) # Previsualización
+            
             if st.button("Ejecutar Importación"):
+                success_count = 0
+                error_count = 0
+                
                 for _, row in df.iterrows():
-                    # Usamos la función expandida que definimos para RDS
-                    create_user_expanded(
-                        username=row['usuario'],
-                        password=str(row['password']),
-                        full_name=row['nombre'],
-                        role=row['rol'],
-                        institution=row['institucion'],
-                        faculty=row['facultad'],
-                        level=row['nivel'],
-                        class_id=row['class_id'],
-                        pilot_id=row['pilot_id'],
-                        city=row['ciudad'],
-                        country=row['pais']
-                    )
-                st.success("✅ Importación de piloto completada.")
+                    try:
+                        # Cambiamos 'level' por 'academic_stage' para que coincida con sql_db.py
+                        create_user_expanded(
+                            username=row['usuario'],
+                            password=str(row['password']),
+                            full_name=row['nombre'],
+                            role=row['rol'],
+                            institution=row['institucion'],
+                            faculty=row['facultad'],
+                            academic_stage=row['nivel'],  # <--- CORRECCIÓN AQUÍ
+                            class_id=row['class_id'],
+                            pilot_id=row['pilot_id'],
+                            city=row['ciudad'],
+                            country=row['pais']
+                        )
+                        success_count += 1
+                    except Exception as e:
+                        st.error(f"Error al crear {row['usuario']}: {e}")
+                        error_count += 1
+                
+                if success_count > 0:
+                    st.success(f"✅ Importación completada: {success_count} usuarios creados.")
+                if error_count > 0:
+                    st.warning(f"⚠️ {error_count} usuarios no pudieron ser creados (posiblemente ya existen).")
 
     # Tab 2: Búsqueda de Usuarios (Tu lógica existente)
     with tab2:
