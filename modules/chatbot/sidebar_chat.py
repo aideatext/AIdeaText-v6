@@ -61,7 +61,7 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
             # 3. AHORA SÍ PUEDES USAR LA VARIABLE SIN MIEDO A ERRORES
             if st.session_state.sidebar_messages:
                 if st.button("🏁 Finalizar Sesión y Calcular Coherencia (M1)"):
-                    with st.spinner("Analizando consistencia transmodal..."):
+                    with st.spinner("Analizando consistencia"):
                         try:
                             # 1. Obtener el Grafo de la Tesis (Ya debe estar en session_state)
                             # Recuperamos el objeto nx.Graph que guardamos en perform_semantic_analysis
