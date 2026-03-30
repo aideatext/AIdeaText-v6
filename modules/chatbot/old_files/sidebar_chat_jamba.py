@@ -136,5 +136,8 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                     st.rerun()
 
         except Exception as e:
-            logger.error(f"Error fatal en sidebar_chat: {str(e)}", exc_info=True)
-            st.error("System error. Please refresh the page.")
+                    logger.error(f"Error fatal en sidebar_chat: {str(e)}", exc_info=True)
+                    # CAMBIA ESTO PARA VER EL ERROR EN EL NAVEGADOR:
+                    st.error(f"DEBUG ERROR: {str(e)}") 
+                    import traceback
+                    st.code(traceback.format_exc())
