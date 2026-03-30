@@ -4,6 +4,7 @@ from datetime import datetime
 
 from modules.database.sql_db import (
     get_user,
+    execute_query,        # <--- Agrega esta línea aquí
     create_user_expanded,
     get_student_user,
     get_admin_user,
