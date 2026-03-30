@@ -109,71 +109,46 @@ def fig_to_bytes(fig, dpi=100):
         return None
         
 ################################################################################################
+
 def compare_semantic_analysis(text1, text2, nlp, lang):
     """
-    Realiza el análisis semántico comparativo entre dos textos
+    Realiza el análisis semántico comparativo entre dos textos con escalado optimizado
     """
     try:
-        # Diccionario de traducciones para los títulos de los gráficos COMPARATIVOS
         COMPARE_GRAPH_TITLES = {
             'es': {
                 'doc1_network': 'Relaciones entre conceptos clave del documento 1',
-                'doc1_centrality': 'Centralidad de los conceptos clave del documento 1',
-                'doc2_network': 'Relaciones entre conceptos clave del documento 2',
-                'doc2_centrality': 'Centralidad de los conceptos clave del documento 2'
+                'doc2_network': 'Relaciones entre conceptos clave del documento 2'
             },
             'en': {
                 'doc1_network': 'Key concept relationships in document 1',
-                'doc1_centrality': 'Key concept centrality in document 1',
-                'doc2_network': 'Key concept relationships in document 2',
-                'doc2_centrality': 'Key concept centrality in document 2'
-            },
-            'fr': {
-                'doc1_network': 'Relations entre concepts clés du document 1',
-                'doc1_centrality': 'Centralité des concepts clés du document 1',
-                'doc2_network': 'Relations entre concepts clés du document 2',
-                'doc2_centrality': 'Centralité des concepts clés du document 2'
-            },
-            'pt': {
-                'doc1_network': 'Relações entre conceitos-chave do documento 1',
-                'doc1_centrality': 'Centralidade dos conceitos-chave do documento 1',
-                'doc2_network': 'Relações entre conceitos-chave do documento 2',
-                'doc2_centrality': 'Centralidade dos conceitos-chave do documento 2'
+                'doc2_network': 'Key concept relationships in document 2'
             }
         }
-
-        # Obtener traducciones (inglés por defecto)
         titles = COMPARE_GRAPH_TITLES.get(lang, COMPARE_GRAPH_TITLES['en'])
         
-        logger.info(f"Iniciando análisis comparativo para idioma: {lang}")
-        
-        # Resto del código permanece exactamente igual...
         stopwords = get_custom_stopwords(lang)
-        logger.info(f"Obtenidas {len(stopwords)} stopwords para el idioma {lang}")
         
         doc1 = nlp(text1)
         doc2 = nlp(text2)
         
-        key_concepts1 = identify_key_concepts(doc1, stopwords=stopwords, min_freq=2, min_length=3)
-        key_concepts2 = identify_key_concepts(doc2, stopwords=stopwords, min_freq=2, min_length=3)
+        # Identificar conceptos (aumentamos un poco el filtro para no saturar el comparativo)
+        key_concepts1 = identify_key_concepts(doc1, stopwords=stopwords, min_freq=3, min_length=3)
+        key_concepts2 = identify_key_concepts(doc2, stopwords=stopwords, min_freq=3, min_length=3)
 
         if not key_concepts1 or not key_concepts2:
-            raise ValueError("No se pudieron identificar conceptos clave en uno o ambos textos")
+            raise ValueError("No se pudieron identificar conceptos suficientes para comparar")
 
         G1 = create_concept_graph(doc1, key_concepts1)
         G2 = create_concept_graph(doc2, key_concepts2)
         
-        # Primer grafo con título traducido
-        plt.figure(figsize=(12, 8))
+        # Generar Figura 1 con la función optimizada que ya arreglamos en semantic_analysis
         fig1 = visualize_concept_graph(G1, lang)
-        plt.title(titles['doc1_network'], pad=20)
-        plt.tight_layout()
+        fig1.suptitle(titles['doc1_network'], fontsize=16)
         
-        # Segundo grafo con título traducido
-        plt.figure(figsize=(12, 8))
+        # Generar Figura 2
         fig2 = visualize_concept_graph(G2, lang)
-        plt.title(titles['doc2_network'], pad=20)
-        plt.tight_layout()
+        fig2.suptitle(titles['doc2_network'], fontsize=16)
 
         return fig1, fig2, key_concepts1, key_concepts2
 
@@ -181,8 +156,6 @@ def compare_semantic_analysis(text1, text2, nlp, lang):
         logger.error(f"Error en compare_semantic_analysis: {str(e)}")
         plt.close('all')
         raise
-    finally:
-        plt.close('all')
 
 ############################################
 def create_concept_table(key_concepts):
