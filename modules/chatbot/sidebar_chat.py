@@ -1,4 +1,5 @@
 # modules/chatbot/sidebar_chat.py
+
 import streamlit as st
 from .chat_process import ChatProcessor
 from ..database.chat_mongo_db import store_chat_history
@@ -24,10 +25,24 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
         """, unsafe_allow_html=True)
 
         try:
+            # 1. INICIALIZAR SIEMPRE TODO PRIMERO
             if 'chat_processor' not in st.session_state:
                 st.session_state.chat_processor = ChatProcessor()
                 logger.info("Nuevo ChatProcessor inicializado")
 
+            if 'sidebar_messages' not in st.session_state:
+                initial_msg = {
+                    'en': "Hello! Ask me about the semantic analysis.",
+                    'es': "¡Hola! Pregúntame sobre el análisis semántico.",
+                    'pt': "Olá! Pergunte-me sobre a análise semântica.",
+                    'fr': "Bonjour ! Posez-moi des questions sur l'analyse sémantique."
+                }.get(lang_code, "Hello!")
+                st.session_state.sidebar_messages = [
+                    {"role": "assistant", "content": initial_msg}
+                ]
+                logger.info("sidebar_messages inicializado")
+
+            # 2. CONFIGURAR CONTEXTO SEMÁNTICO
             if st.session_state.get('semantic_agent_active', False):
                 semantic_data = st.session_state.get('semantic_agent_data')
                 if semantic_data and all(k in semantic_data for k in ['text', 'metrics']):
@@ -43,6 +58,7 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                         st.error("Error al configurar el análisis. Recargue el documento.")
                         return
 
+            # 3. AHORA SÍ PUEDES USAR LA VARIABLE SIN MIEDO A ERRORES
             if st.session_state.sidebar_messages:
                 if st.button("🏁 Finalizar Sesión y Calcular Coherencia (M1)"):
                     with st.spinner("Analizando consistencia transmodal..."):
@@ -80,6 +96,7 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                             logger.error(f"Error al calcular M1: {e}")
                             st.error("No se pudo completar el análisis de coherencia.")
             
+            # 4. RENDERIZAR EL EXPANDER DE CHAT
             with st.expander("💬 Asistente de Análisis", expanded=True):
                 if 'sidebar_messages' not in st.session_state:
                     initial_msg = {
