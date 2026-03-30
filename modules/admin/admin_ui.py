@@ -26,6 +26,8 @@ def format_duration(seconds):
     minutes = (seconds % 3600) // 60
     return f"{hours}h {minutes}m"
 
+
+#######################################################################################
 def admin_page():
     st.title("Panel de Administración")
     st.write(f"Bienvenido, {st.session_state.username}")
@@ -37,41 +39,45 @@ def admin_page():
         "Actividad de la Plataforma"
     ])
 
-    
 ########################################################
     # Tab 1: Gestión de Usuarios
     with tab1:
-        st.header("Crear Nuevo Usuario Estudiante")
+        st.header("Registro de Estudiantes - Piloto 2026")
         
-        # Crear dos columnas para el formulario
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            new_username = st.text_input("Correo electrónico", key="admin_new_username")
-            new_group = st.text_input("ID de Grupo (ej. UNIFE_2026)", key="admin_new_group")
-        
-        with col2:
-            new_password = st.text_input(
-                "Contraseña", 
-                type="password", 
-                key="admin_new_password"
-            )
-        
-        if st.button("Crear Usuario", key="admin_create_user", type="primary"):
-            if new_username and new_password:  # Verificamos que ambos campos tengan valor
-                try:
-                    # Hashear la contraseña antes de crear el usuario
-                    hashed_password = hash_password(new_password)
-                    # Pasamos el new_group a la función de creación
-                    if create_student_user(new_username, hashed_password, group_id=new_group):
-                        st.success(f"Usuario {new_username} asignado al grupo {new_group}")
-                    else:
-                        st.error("Error al crear el usuario estudiante")
-                except Exception as e:
-                    st.error(f"Error al crear usuario: {str(e)}")
-            else:
-                st.warning("Por favor complete todos los campos")
+        with st.form("registro_estudiante_multitenant"):
+            col1, col2 = st.columns(2)
+            with col1:
+                new_username = st.text_input("ID de Usuario (ej. correo)", key="reg_user")
+                new_password = st.text_input("Contraseña Temporal", type="password", key="reg_pass")
+                new_full_name = st.text_input("Nombre Completo del Alumno")
 
+            with col2:
+                new_inst = st.selectbox("Universidad", ["UNIFE", "UAM", "PUCP"], index=0)
+                new_stage = st.selectbox("Nivel Académico", ["Pre Grado", "Post Grado"], index=0)
+                new_fac = st.selectbox("Facultad", ["Educación", "Psicología", "Ingeniería", "Derecho"])
+            
+            st.markdown("---")
+            new_group = st.text_input("ID de Grupo / Equipo", placeholder="Ej: UNIFE_EDU_G1")
+            
+            submit = st.form_submit_button("Registrar en Base de Datos", type="primary")
+
+        if submit:
+            if new_username and new_password and new_group:
+                try:
+                    hashed = hash_password(new_password)
+                    success = create_student_user(
+                        new_username, hashed, new_group, 
+                        new_inst, new_stage, new_fac, 
+                        new_full_name, new_username
+                    )
+                    if success:
+                        st.success(f"✅ Registrado: {new_full_name} ({new_inst} - {new_fac})")
+                    else:
+                        st.error("Error al guardar. Verifica la conexión con RDS.")
+                except Exception as e:
+                    st.error(f"Error técnico: {e}")
+            else:
+                st.warning("Usuario, Contraseña y Grupo son obligatorios.")
 #######################################################################                
     # Tab 2: Búsqueda de Usuarios
     with tab2:
@@ -103,8 +109,19 @@ def admin_page():
                 ])
                 
                 with info_tab1:
-                    st.subheader("Información del Usuario")
-                    st.json(student)
+                    st.subheader("Ficha del Estudiante")
+                    # Mostramos los datos clave de forma organizada
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Institución", student.get('institution'))
+                    c2.metric("Facultad", student.get('faculty'))
+                    c3.metric("Grupo", student.get('group_id'))
+                    
+                    st.write("**Nivel:**", student.get('academic_stage'))
+                    st.write("**Nombre:**", student.get('full_name'))
+                    st.write("**Email:**", student.get('email'))
+                    
+                    with st.expander("Ver JSON completo"):
+                        st.json(student)
 
                 with info_tab2:
                     st.subheader("Análisis Realizados")

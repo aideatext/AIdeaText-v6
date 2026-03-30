@@ -39,14 +39,11 @@ def execute_query(query, params=None, fetch=True):
         release_pg_connection(conn)
 
 # --- BÚSQUEDA DE USUARIOS ---
-def get_user(username, role=None):
-    if role:
-        query = "SELECT id, password, role, group_id FROM users WHERE id = %s AND role = %s"
-        result = execute_query(query, (username, role))
-    else:
-        query = "SELECT id, password, role, group_id FROM users WHERE id = %s"
-        result = execute_query(query, (username,))
-    # Al usar execute_query, result ya es una lista de diccionarios
+def get_user(username):
+    """Busca un usuario por ID y devuelve todos sus campos, incluyendo los de multi-tenancy."""
+    # Al usar SELECT *, nos aseguramos de traer group_id, institution y academic_stage
+    query = "SELECT * FROM users WHERE id = %s"
+    result = execute_query(query, (username,))
     return result[0] if result else None
 
 def get_admin_user(username):
@@ -68,9 +65,31 @@ def create_user(username, password, role, group_id='SIN_GRUPO', additional_info=
     email = additional_info.get('email') if additional_info else None
     return execute_query(query, (username, password, role, group_id, full_name, email), fetch=False)
 
-def create_student_user(username, password, additional_info=None):
-    return create_user(username, password, 'Estudiante', additional_info)
 
+##############################################
+
+def create_student_user(username, password, group_id, institution, academic_stage, faculty, full_name=None, email=None):
+    """
+    Crea un estudiante con la jerarquía completa en RDS.
+    """
+    query = """
+        INSERT INTO users (id, password, role, group_id, institution, academic_stage, faculty, full_name, email, created_at)
+        VALUES (%s, %s, 'Estudiante', %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+    """
+    # El orden de params debe coincidir exactamente con los %s del query
+    params = (
+        username, 
+        password, 
+        group_id, 
+        institution, 
+        academic_stage, 
+        faculty, 
+        full_name, 
+        email
+    )
+    return execute_query(query, params, fetch=False)
+
+###################################
 def create_teacher_user(username, password, additional_info=None):
     return create_user(username, password, 'Profesor', additional_info)
 
