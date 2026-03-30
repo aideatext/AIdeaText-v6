@@ -59,7 +59,7 @@ def admin_page():
                 for _, row in df.iterrows():
                     # Usamos la función expandida que definimos para RDS
                     create_user_expanded(
-                        id=row['usuario'],
+                        username=row['usuario'],
                         password=str(row['password']),
                         full_name=row['nombre'],
                         role=row['rol'],
