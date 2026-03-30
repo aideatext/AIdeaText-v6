@@ -1,8 +1,14 @@
 # modules/chatbot/sidebar_chat.py
 import streamlit as st
-from ..chat_process import ChatProcessor
-from ...database.chat_mongo_db import store_chat_history
 import logging
+import traceback
+
+# Importaciones absolutas (más seguras en EC2)
+from modules.chatbot.chat_process import ChatProcessor
+from modules.database.chat_mongo_db import store_chat_history
+from modules.metrics.m1_m2 import calculate_M1, interpret_M1
+from modules.text_analysis.semantic_analysis import create_concept_graph
+
 
 logger = logging.getLogger(__name__)
 
