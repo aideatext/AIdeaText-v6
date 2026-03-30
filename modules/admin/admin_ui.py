@@ -1,8 +1,10 @@
 import pandas as pd
 import streamlit as st
 from datetime import datetime
-from ..database.sql_db import (
+
+from modules.database.sql_db import (
     get_user,
+    create_user_expanded,
     get_student_user,
     get_admin_user,
     get_teacher_user,
@@ -14,6 +16,8 @@ from ..database.sql_db import (
     get_recent_sessions,
     get_user_total_time
 )
+
+from modules.database.mongo_db import get_student_semantic_analysis
 
 #from ..database.morphosintax_mongo_db import get_student_morphosyntax_analysis
 from ..auth.auth import hash_password  # Agregar esta importación al inicio
@@ -114,7 +118,7 @@ def admin_page():
 
                 with info_tab2:
                     st.subheader("Análisis Realizados")
-                    student_data = get_student_morphosyntax_analysis(student_username)
+                    student_data = get_student_semantic_analysis(student_username)
                     if student_data:
                         st.json(student_data)
                     else:
