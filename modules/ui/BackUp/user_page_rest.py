@@ -11,21 +11,21 @@ logger = logging.getLogger(__name__)
 
 #Importaciones locales.
 
-from ..utils.widget_utils import generate_unique_key
+from ...utils.widget_utils import generate_unique_key
 
 from session_state import initialize_session_state, logout
 
 from translations import get_translations
 
-from ..auth.auth import authenticate_user, authenticate_student, authenticate_admin
+from ...auth.auth import authenticate_user, authenticate_student, authenticate_admin
 
-from ..admin.admin_ui import admin_page
+from ...admin.admin_ui import admin_page
 
-from ..chatbot import display_sidebar_chat
+from ...chatbot import display_sidebar_chat
 
 # Students activities
 
-from ..studentact.student_activities_v2 import display_student_activities
+from ...studentact.student_activities_v2 import display_student_activities
 
 #from ..studentact.current_situation_interface import display_current_situation_interface
 #from ..studentact.current_situation_analysis import analyze_text_dimensions
@@ -33,7 +33,7 @@ from ..studentact.student_activities_v2 import display_student_activities
 
 ##Importaciones desde la configuración de bases datos #######
 
-from ..database.sql_db import (
+from ...database.sql_db import (
     get_user,
     get_admin_user,
     get_student_user,
@@ -52,7 +52,7 @@ from ..database.sql_db import (
     store_student_feedback
 )
 
-from ..database.mongo_db import (
+from ...database.mongo_db import (
     get_collection,
     insert_document,
     find_documents,
@@ -60,7 +60,7 @@ from ..database.mongo_db import (
     delete_document
 )
 
-from ..database.semantic_mongo_db import (
+from ...database.semantic_mongo_db import (
     store_student_semantic_result,
     get_student_semantic_analysis,
     update_student_semantic_analysis,
@@ -68,20 +68,20 @@ from ..database.semantic_mongo_db import (
     get_student_semantic_data
 )
 
-from ..database.semantic_mongo_live_db import get_student_semantic_live_analysis
+from ...database.semantic_mongo_live_db import get_student_semantic_live_analysis
 
-from ..database.chat_mongo_db import store_chat_history, get_chat_history
+from ...database.chat_mongo_db import store_chat_history, get_chat_history
 
 ##Importaciones desde los análisis #######
 
-from ..semantic.semantic_live_interface import display_semantic_live_interface
+from ...semantic.semantic_live_interface import display_semantic_live_interface
 
-from ..semantic.semantic_interface import (
+from ...semantic.semantic_interface import (
     display_semantic_interface, 
     display_semantic_results
 )
 
-from ..discourse.discourse_interface import (    # Agregar esta importación
+from ...discourse.discourse_interface import (    # Agregar esta importación
     display_discourse_interface,
     display_discourse_results
 )

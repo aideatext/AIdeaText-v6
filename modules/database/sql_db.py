@@ -56,14 +56,19 @@ def get_teacher_user(username):
     return get_user(username, role='Profesor')
 
 # --- CREACIÓN DE USUARIOS (Añadiendo group_id) ---
-def create_user(username, password, role, group_id='SIN_GRUPO', additional_info=None):
+def create_user(username, password, role, class_id, institution, academic_stage, faculty, pilot_id, city, country, full_name=None):
     query = """
-        INSERT INTO users (id, password, role, group_id, full_name, email, created_at) 
-        VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+        INSERT INTO users (
+            id, password, role, class_id, institution, academic_stage, 
+            faculty, pilot_id, city, country, full_name, created_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
     """
-    full_name = additional_info.get('full_name') if additional_info else None
-    email = additional_info.get('email') if additional_info else None
-    return execute_query(query, (username, password, role, group_id, full_name, email), fetch=False)
+    params = (
+        username, password, role, class_id, institution, 
+        academic_stage, faculty, pilot_id, city, country, full_name
+    )
+    return execute_query(query, params, fetch=False)
 
 
 ##############################################
@@ -90,8 +95,16 @@ def create_student_user(username, password, group_id, institution, academic_stag
     return execute_query(query, params, fetch=False)
 
 ###################################
-def create_teacher_user(username, password, additional_info=None):
-    return create_user(username, password, 'Profesor', additional_info)
+def create_teacher_user(username, password, institution, faculty, full_name=None, email=None):
+    """Crea un usuario con rol Profesor en RDS."""
+    query = """
+        INSERT INTO users (id, password, role, institution, faculty, academic_stage, group_id, full_name, email, created_at)
+        VALUES (%s, %s, 'Profesor', %s, %s, 'N/A', 'ADMIN_FACULTY', %s, %s, CURRENT_TIMESTAMP)
+    """
+    params = (username, password, institution, faculty, full_name, email)
+    return execute_query(query, params, fetch=False)
+
+###############################################################
 
 def create_admin_user(username, password, additional_info=None):
     return create_user(username, password, 'Administrador', additional_info)

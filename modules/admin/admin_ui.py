@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 from datetime import datetime
 from ..database.sql_db import (
@@ -42,42 +43,30 @@ def admin_page():
 ########################################################
     # Tab 1: Gestión de Usuarios
     with tab1:
-        st.header("Registro de Estudiantes - Piloto 2026")
+        st.header("Carga Masiva de Usuarios")
+        st.info("El CSV debe tener las columnas: usuario, password, nombre, rol, institucion, facultad, nivel, class_id, pilot_id, ciudad, pais")
         
-        with st.form("registro_estudiante_multitenant"):
-            col1, col2 = st.columns(2)
-            with col1:
-                new_username = st.text_input("ID de Usuario (ej. correo)", key="reg_user")
-                new_password = st.text_input("Contraseña Temporal", type="password", key="reg_pass")
-                new_full_name = st.text_input("Nombre Completo del Alumno")
-
-            with col2:
-                new_inst = st.selectbox("Universidad", ["UNIFE", "UAM", "PUCP"], index=0)
-                new_stage = st.selectbox("Nivel Académico", ["Pre Grado", "Post Grado"], index=0)
-                new_fac = st.selectbox("Facultad", ["Educación", "Psicología", "Ingeniería", "Derecho"])
-            
-            st.markdown("---")
-            new_group = st.text_input("ID de Grupo / Equipo", placeholder="Ej: UNIFE_EDU_G1")
-            
-            submit = st.form_submit_button("Registrar en Base de Datos", type="primary")
-
-        if submit:
-            if new_username and new_password and new_group:
-                try:
-                    hashed = hash_password(new_password)
-                    success = create_student_user(
-                        new_username, hashed, new_group, 
-                        new_inst, new_stage, new_fac, 
-                        new_full_name, new_username
+        csv_file = st.file_uploader("Subir Archivo de Piloto", type=["csv"])
+        
+        if csv_file:
+            df = pd.read_csv(csv_file)
+            if st.button("Ejecutar Importación"):
+                for _, row in df.iterrows():
+                    hashed = hash_password(str(row['password']))
+                    create_user_expanded(
+                        username=row['usuario'],
+                        password=hashed,
+                        role=row['rol'], # 'Estudiante' o 'Profesor'
+                        class_id=row['class_id'],
+                        institution=row['institucion'],
+                        academic_stage=row['nivel'],
+                        faculty=row['facultad'],
+                        pilot_id=row['pilot_id'],
+                        city=row['ciudad'],
+                        country=row['pais'],
+                        full_name=row['nombre']
                     )
-                    if success:
-                        st.success(f"✅ Registrado: {new_full_name} ({new_inst} - {new_fac})")
-                    else:
-                        st.error("Error al guardar. Verifica la conexión con RDS.")
-                except Exception as e:
-                    st.error(f"Error técnico: {e}")
-            else:
-                st.warning("Usuario, Contraseña y Grupo son obligatorios.")
+                st.success("✅ Importación de piloto completada.")
 #######################################################################                
     # Tab 2: Búsqueda de Usuarios
     with tab2:
