@@ -81,7 +81,7 @@ def load_database_functions():
     )
 
     # Importar funciones SQL
-    from .database.backUp.sql_db import (
+    from .database.sql_db import (
         create_student_user,
         get_student_user,
         update_student_user,

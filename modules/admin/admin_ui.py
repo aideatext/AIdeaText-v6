@@ -1,6 +1,6 @@
 import streamlit as st
 from datetime import datetime
-from ..database.backUp.sql_db import (
+from ..database.sql_db import (
     get_user,
     get_student_user,
     get_admin_user,
@@ -47,10 +47,8 @@ def admin_page():
         col1, col2 = st.columns(2)
         
         with col1:
-            new_username = st.text_input(
-                "Correo electrónico del nuevo usuario", 
-                key="admin_new_username"
-            )
+            new_username = st.text_input("Correo electrónico", key="admin_new_username")
+            new_group = st.text_input("ID de Grupo (ej. UNIFE_2026)", key="admin_new_group")
         
         with col2:
             new_password = st.text_input(
@@ -64,8 +62,9 @@ def admin_page():
                 try:
                     # Hashear la contraseña antes de crear el usuario
                     hashed_password = hash_password(new_password)
-                    if create_student_user(new_username, hashed_password, {'partitionKey': new_username}):
-                        st.success(f"Usuario estudiante {new_username} creado exitosamente")
+                    # Pasamos el new_group a la función de creación
+                    if create_student_user(new_username, hashed_password, group_id=new_group):
+                        st.success(f"Usuario {new_username} asignado al grupo {new_group}")
                     else:
                         st.error("Error al crear el usuario estudiante")
                 except Exception as e:

@@ -2,7 +2,7 @@ import os
 import pg8000.native
 import logging
 import json
-from ..database_init import get_pg_connection, release_pg_connection
+from .database_init import get_pg_connection, release_pg_connection
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +41,12 @@ def execute_query(query, params=None, fetch=True):
 # --- BÚSQUEDA DE USUARIOS ---
 def get_user(username, role=None):
     if role:
-        query = "SELECT * FROM users WHERE id = %s AND role = %s"
+        query = "SELECT id, password, role, group_id FROM users WHERE id = %s AND role = %s"
         result = execute_query(query, (username, role))
     else:
-        query = "SELECT * FROM users WHERE id = %s"
+        query = "SELECT id, password, role, group_id FROM users WHERE id = %s"
         result = execute_query(query, (username,))
+    # Al usar execute_query, result ya es una lista de diccionarios
     return result[0] if result else None
 
 def get_admin_user(username):
@@ -57,15 +58,15 @@ def get_student_user(username):
 def get_teacher_user(username):
     return get_user(username, role='Profesor')
 
-# --- CREACIÓN DE USUARIOS ---
-def create_user(username, password, role, additional_info=None):
+# --- CREACIÓN DE USUARIOS (Añadiendo group_id) ---
+def create_user(username, password, role, group_id='SIN_GRUPO', additional_info=None):
     query = """
-        INSERT INTO users (id, password, role, full_name, email, created_at) 
-        VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+        INSERT INTO users (id, password, role, group_id, full_name, email, created_at) 
+        VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
     """
     full_name = additional_info.get('full_name') if additional_info else None
     email = additional_info.get('email') if additional_info else None
-    return execute_query(query, (username, password, role, full_name, email), fetch=False)
+    return execute_query(query, (username, password, role, group_id, full_name, email), fetch=False)
 
 def create_student_user(username, password, additional_info=None):
     return create_user(username, password, 'Estudiante', additional_info)
