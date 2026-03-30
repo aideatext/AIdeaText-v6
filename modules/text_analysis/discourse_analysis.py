@@ -112,48 +112,49 @@ def fig_to_bytes(fig, dpi=100):
 
 def compare_semantic_analysis(text1, text2, nlp, lang):
     """
-    Realiza el análisis semántico comparativo entre dos textos con escalado optimizado
+    Realiza el análisis semántico comparativo con escalado optimizado.
     """
     try:
         COMPARE_GRAPH_TITLES = {
             'es': {
-                'doc1_network': 'Relaciones entre conceptos clave del documento 1',
-                'doc2_network': 'Relaciones entre conceptos clave del documento 2'
+                'doc1_network': 'Estructura Semántica: Documento 1',
+                'doc2_network': 'Estructura Semántica: Documento 2'
             },
             'en': {
-                'doc1_network': 'Key concept relationships in document 1',
-                'doc2_network': 'Key concept relationships in document 2'
+                'doc1_network': 'Semantic Structure: Document 1',
+                'doc2_network': 'Semantic Structure: Document 2'
             }
         }
         titles = COMPARE_GRAPH_TITLES.get(lang, COMPARE_GRAPH_TITLES['en'])
-        
         stopwords = get_custom_stopwords(lang)
         
+        # Procesamiento de documentos
         doc1 = nlp(text1)
         doc2 = nlp(text2)
         
-        # Identificar conceptos (aumentamos un poco el filtro para no saturar el comparativo)
-        key_concepts1 = identify_key_concepts(doc1, stopwords=stopwords, min_freq=3, min_length=3)
-        key_concepts2 = identify_key_concepts(doc2, stopwords=stopwords, min_freq=3, min_length=3)
+        # Sincronización con los filtros de semantic_analysis para evitar saturación
+        # Se aumenta ligeramente el filtro para archivos de 0.9MB en modo comparativo
+        key_concepts1 = identify_key_concepts(doc1, stopwords=stopwords, min_freq=4, min_length=3)
+        key_concepts2 = identify_key_concepts(doc2, stopwords=stopwords, min_freq=4, min_length=3)
 
         if not key_concepts1 or not key_concepts2:
-            raise ValueError("No se pudieron identificar conceptos suficientes para comparar")
+            raise ValueError("Conceptos insuficientes para la comparación")
 
         G1 = create_concept_graph(doc1, key_concepts1)
         G2 = create_concept_graph(doc2, key_concepts2)
         
-        # Generar Figura 1 con la función optimizada que ya arreglamos en semantic_analysis
+        # USAR LA FUNCIÓN OPTIMIZADA CON ESCALA MIN-MAX
+        # Esta llamada ya usa la lógica de 600 a 4000 que arreglamos hoy
         fig1 = visualize_concept_graph(G1, lang)
-        fig1.suptitle(titles['doc1_network'], fontsize=16)
+        fig1.suptitle(titles['doc1_network'], fontsize=14, fontweight='bold')
         
-        # Generar Figura 2
         fig2 = visualize_concept_graph(G2, lang)
-        fig2.suptitle(titles['doc2_network'], fontsize=16)
+        fig2.suptitle(titles['doc2_network'], fontsize=14, fontweight='bold')
 
         return fig1, fig2, key_concepts1, key_concepts2
 
     except Exception as e:
-        logger.error(f"Error en compare_semantic_analysis: {str(e)}")
+        logger.error(f"Error en comparación: {str(e)}")
         plt.close('all')
         raise
 
