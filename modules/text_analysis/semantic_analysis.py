@@ -298,102 +298,42 @@ def create_concept_graph(doc, lang_code='es'):
 ###############################################################################
 
 def visualize_concept_graph(G, lang_code, node_scale=None):
-    try:
-        # 1. Diccionario de traducciones original
-        GRAPH_LABELS = {
-            'es': {'concept_network': 'Relaciones entre conceptos clave', 'concept_centrality': 'Centralidad de conceptos clave'},
-            'en': {'concept_network': 'Relationships between key concepts', 'concept_centrality': 'Concept centrality'},
-            'fr': {'concept_network': 'Relations entre concepts clés', 'concept_centrality': 'Centralité des concepts'},
-            'pt': {'concept_network': 'Relações entre conceitos-chave', 'concept_centrality': 'Centralidade dos conceitos'}
-        }
-        translations = GRAPH_LABELS.get(lang_code, GRAPH_LABELS['en'])
-        
-        fig, ax = plt.subplots(figsize=(15, 10))
-        
-        if not G.nodes():
-            logger.warning("Grafo vacío, retornando figura vacía")
-            return fig
-            
-        DG = nx.DiGraph(G)
-        centrality = nx.degree_centrality(G)
-        pos = nx.spring_layout(DG, k=2.5, iterations=50, seed=42)
-        
-        num_nodes = len(DG.nodes())
-        
-        # ─────────────────────────────────────────────────────────────
-        # NUEVA LÓGICA: Normalización Min-Max Estricta
-        # ─────────────────────────────────────────────────────────────
-        weights = [DG.nodes[n].get('weight', 1) for n in DG.nodes()]
-        max_w = max(weights) if weights else 1
-        min_w = min(weights) if weights else 1
-        
-        # Definimos los topes visuales fijos según la cantidad de nodos
-        # (Así garantizamos que tu diseño original se mantenga intacto)
-        if num_nodes < 10:
-            min_visual_size, max_visual_size = 1500, 6000
-        elif num_nodes < 20:
-            min_visual_size, max_visual_size = 1000, 5000
-        else:
-            min_visual_size, max_visual_size = 600, 4000
-            
-        node_sizes = []
-        for w in weights:
-            if max_w == min_w:
-                node_sizes.append(max_visual_size / 2)
-            else:
-                # Normalizamos logarítmicamente entre 0.0 y 1.0
-                log_w = np.log1p(w)
-                log_min = np.log1p(min_w)
-                log_max = np.log1p(max_w)
-                norm_val = (log_w - log_min) / (log_max - log_min)
-                
-                # Proyectamos ese valor [0, 1] a nuestro rango de píxeles [min, max]
-                final_size = min_visual_size + norm_val * (max_visual_size - min_visual_size)
-                node_sizes.append(final_size)
-        
-        # ─────────────────────────────────────────────────────────────
-        # Ajuste dinámico de Aristas (Flechas)
-        # ─────────────────────────────────────────────────────────────
-        edge_weights_raw = [DG[u][v].get('weight', 1) for u, v in DG.edges()]
-        max_ew = max(edge_weights_raw) if edge_weights_raw else 1
-        min_ew = min(edge_weights_raw) if edge_weights_raw else 1
-        
-        edge_widths = []
-        for ew in edge_weights_raw:
-            if max_ew == min_ew:
-                edge_widths.append(2.0)
-            else:
-                log_ew = np.log1p(ew)
-                log_min_ew = np.log1p(min_ew)
-                log_max_ew = np.log1p(max_ew)
-                norm_ew = (log_ew - log_min_ew) / (log_max_ew - log_min_ew)
-                # Grosores confinados entre 1.0 y 5.0 para no ensuciar la red
-                edge_widths.append(1.0 + norm_ew * 4.0)
+    import numpy as np
+    import networkx as nx
+    import matplotlib.pyplot as plt
 
-        # Colores originales (viridis de 0 a 1)
-        node_colors = [plt.cm.viridis(centrality[node]) for node in DG.nodes()]
-        
-        # Renderizado
-        nx.draw_networkx_nodes(DG, pos, node_size=node_sizes, node_color=node_colors, alpha=0.85, ax=ax)
-        nx.draw_networkx_edges(DG, pos, width=edge_widths, alpha=0.5, edge_color='gray', arrows=True, arrowsize=20, arrowstyle='->', connectionstyle='arc3,rad=0.2', ax=ax)
-        
-        font_size = 12 if num_nodes < 10 else 10 if num_nodes < 20 else 9
-        nx.draw_networkx_labels(DG, pos, font_size=font_size, font_weight='bold', bbox=dict(facecolor='white', edgecolor='none', alpha=0.7, boxstyle='round,pad=0.3'), ax=ax)
-        
-        # Barra lateral intacta
-        sm = plt.cm.ScalarMappable(cmap=plt.cm.viridis, norm=plt.Normalize(vmin=0, vmax=1))
-        sm.set_array([])
-        plt.colorbar(sm, ax=ax, label=translations['concept_centrality'])
-        
-        plt.title(translations['concept_network'], pad=20, fontsize=16)
-        ax.set_axis_off()
-        plt.tight_layout()
-        
-        return fig
-        
-    except Exception as e:
-        logger.error(f"Error en visualize_concept_graph: {str(e)}", exc_info=True)
-        return plt.figure()
+    GRAPH_LABELS = {
+        'es': {'concept_network': 'Relaciones entre conceptos clave', 'concept_centrality': 'Centralidad'},
+        'en': {'concept_network': 'Key Concept Relationships', 'concept_centrality': 'Centrality'}
+    }
+    translations = GRAPH_LABELS.get(lang_code, GRAPH_LABELS['en'])
+    
+    fig, ax = plt.subplots(figsize=(15, 10))
+    DG = nx.DiGraph(G)
+    centrality = nx.degree_centrality(G)
+    pos = nx.spring_layout(DG, k=2.5, iterations=50, seed=42)
+    
+    # Lógica Min-Max para evitar "bolas de pelos" en 0.9MB
+    weights = [DG.nodes[n].get('weight', 1) for n in DG.nodes()]
+    max_w, min_w = max(weights) if weights else 1, min(weights) if weights else 1
+    
+    # Normalización Logarítmica
+    node_sizes = []
+    for w in weights:
+        norm = (np.log1p(w) - np.log1p(min_w)) / (np.log1p(max_w) - np.log1p(min_w) + 1e-9)
+        node_sizes.append(600 + norm * 3400) # Rango entre 600 y 4000
+    
+    node_colors = [plt.cm.viridis(centrality[node]) for node in DG.nodes()]
+    
+    nx.draw_networkx_nodes(DG, pos, node_size=node_sizes, node_color=node_colors, alpha=0.8, ax=ax)
+    nx.draw_networkx_edges(DG, pos, width=1.5, alpha=0.3, edge_color='gray', arrows=True, ax=ax)
+    nx.draw_networkx_labels(DG, pos, font_size=10, font_weight='bold', ax=ax)
+    
+    sm = plt.cm.ScalarMappable(cmap=plt.cm.viridis, norm=plt.Normalize(vmin=0, vmax=1))
+    plt.colorbar(sm, ax=ax, label=translations['concept_centrality'])
+    plt.title(translations['concept_network'])
+    ax.set_axis_off()
+    return fig
 
 ########################################################################
 def create_entity_graph(entities):
