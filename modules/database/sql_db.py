@@ -56,20 +56,19 @@ def get_teacher_user(username):
     return get_user(username, role='Profesor')
 
 # --- CREACIÓN DE USUARIOS (Añadiendo group_id) ---
-def create_user_expanded(username, password, role, class_id, institution, academic_stage, faculty, pilot_id, city, country, full_name=None):
-    query = """
-        INSERT INTO users (
-            id, password, role, class_id, institution, academic_stage, 
-            faculty, pilot_id, city, country, full_name, created_at
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+def create_user_expanded(username, password, full_name, role, institution, faculty, academic_stage, class_id, pilot_id, city, country):
     """
-    params = (
-        username, password, role, class_id, institution, 
-        academic_stage, faculty, pilot_id, city, country, full_name
-    )
-    return execute_query(query, params, fetch=False)
-
+    Crea un usuario con la estructura completa del piloto 2026.
+    """
+    import bcrypt
+    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    query = """
+        INSERT INTO users (id, password, full_name, role, institution, faculty, level, class_id, pilot_id, city, country)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """
+    params = (username, hashed, full_name, role, institution, faculty, academic_stage, class_id, pilot_id, city, country)
+    return execute_commit(query, params)
 
 ##############################################
 
