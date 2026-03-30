@@ -59,6 +59,13 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
             with st.expander("💬 Asistente de Análisis", expanded=True):
                 # Inicializar historial si no existe
                 if 'sidebar_messages' not in st.session_state:
+                    st.session_state.sidebar_messages = []
+                    logger.info("Historial de mensajes de la barra lateral inicializado")
+                    
+                if 'chat_processor' not in st.session_state:
+                    st.session_state.chat_processor = ChatProcessor()
+                    logger.info("Nuevo ChatProcessor inicializado")    
+                        
                     initial_msg = {
                         'en': "Hello! Ask me about the semantic analysis.",
                         'es': "¡Hola! Pregúntame sobre el análisis semántico.",
