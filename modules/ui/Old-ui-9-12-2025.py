@@ -146,7 +146,7 @@ logger = logging.getLogger(__name__)
 from session_state import initialize_session_state, logout
 from translations import get_translations, get_landing_translations
 from ..auth.auth import authenticate_user, authenticate_student, authenticate_admin
-from ..database.sql_db import store_application_request
+from ..database.backUp.sql_db import store_application_request
 
 # Intento de importación con logger YA DEFINIDO
 try:

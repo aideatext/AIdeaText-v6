@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 # Local imports
 from ..utils.widget_utils import generate_unique_key
-from ..database.current_situation_mongo_db import store_current_situation_result
+from ..database.backUp.current_situation_mongo_db import store_current_situation_result
 
 logger = logging.getLogger(__name__)
 
@@ -275,7 +275,7 @@ def store_recommendations(username, text, metrics, text_type, recommendations):
     """
     try:
         # Importar la función de almacenamiento de recomendaciones
-        from ..database.claude_recommendations_mongo_db import store_claude_recommendation
+        from ..database.backUp.claude_recommendations_mongo_db import store_claude_recommendation
         
         # Guardar usando la nueva función especializada
         result = store_claude_recommendation(

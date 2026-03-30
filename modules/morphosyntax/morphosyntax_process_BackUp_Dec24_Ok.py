@@ -13,7 +13,7 @@ from ..text_analysis.morpho_analysis import (
     POS_TRANSLATIONS
 )
 
-from ..database.morphosintax_mongo_db import store_student_morphosyntax_result
+from ..database.backUp.morphosintax_mongo_db import store_student_morphosyntax_result
 
 import logging
 logger = logging.getLogger(__name__)

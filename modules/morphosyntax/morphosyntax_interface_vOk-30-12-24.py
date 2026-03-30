@@ -8,7 +8,7 @@ from spacy import displacy
 # Se asume que la función perform_advanced_morphosyntactic_analysis
 # y los métodos store_student_morphosyntax_base/iteration existen.
 from ..morphosyntax.morphosyntax_process import perform_advanced_morphosyntactic_analysis
-from ..database.morphosyntax_iterative_mongo_db import (
+from ..database.backUp.morphosyntax_iterative_mongo_db import (
     store_student_morphosyntax_base,
     store_student_morphosyntax_iteration,
 )

@@ -2,7 +2,7 @@ import os
 import pg8000.native
 import logging
 import json
-from .database_init import get_pg_connection, release_pg_connection
+from ..database_init import get_pg_connection, release_pg_connection
 
 logger = logging.getLogger(__name__)
 
