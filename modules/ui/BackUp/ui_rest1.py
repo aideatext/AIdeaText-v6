@@ -20,17 +20,17 @@ logger = logging.getLogger(__name__)
 
 ######################################################
 # Importaciones locales
-from ..email.email import send_email_notification
+from ...email.email import send_email_notification
 
 ######################################################
 # Importaciones locales de autenticación y base de datos
-from ..auth.auth import (
+from ...auth.auth import (
     authenticate_user,
     register_user
 )
 
 ######################################################
-from ..database.database_oldFromV2 import (
+from ...database import (
     get_student_data,
     store_application_request,
     store_morphosyntax_result,
@@ -44,11 +44,11 @@ from ..database.database_oldFromV2 import (
 
 ######################################################
 # Importaciones locales de uiadmin
-from ..admin.admin_ui import admin_page
+from ...admin.admin_ui import admin_page
 
 ######################################################
 # Importaciones locales funciones de análisis
-from ..text_analysis.morpho_analysis import (
+from ...text_analysis.morpho_analysis import (
     generate_arc_diagram,
     get_repeated_words_colors,
     highlight_repeated_words,
@@ -58,7 +58,7 @@ from ..text_analysis.morpho_analysis import (
 )
 
 ######################################################
-from ..text_analysis.semantic_analysis import (
+from ...text_analysis.semantic_analysis import (
     #visualize_semantic_relations,
     perform_semantic_analysis,
     create_concept_graph,
@@ -66,13 +66,13 @@ from ..text_analysis.semantic_analysis import (
 )
 
 ######################################################
-from ..text_analysis.discourse_analysis import (
+from ...text_analysis.discourse_analysis import (
     perform_discourse_analysis,
     display_discourse_analysis_results
 )
 
 ######################################################
-from ..chatbot.chatbot import (
+from ...chatbot import (
     initialize_chatbot,
     get_chatbot_response
 )

@@ -41,15 +41,23 @@ def authenticate_user(username, password):
         db_password = user.get('password')
         
         if verify_password(db_password, password):
-            # Sincronizamos la sesión de Streamlit con la jerarquía de la DB
+            # Sincronizamos TODA la jerarquía multitenant
             st.session_state.username = user.get('id')
             st.session_state.role = user.get('role')
-            st.session_state.group_id = user.get('group_id')
             st.session_state.institution = user.get('institution')
+            st.session_state.faculty = user.get('faculty')
             st.session_state.academic_stage = user.get('academic_stage')
-            st.session_state.faculty = user.get('faculty') # <--- Nueva columna
             
-            return user # Retornamos el diccionario completo
+            # Mapeo de Grupos: Usamos class_id (SQL) pero mantenemos group_id por compatibilidad
+            val_group = user.get('class_id')
+            st.session_state.class_id = val_group
+            st.session_state.group_id = val_group  # <--- Esto arregla la visualización del profesor
+            
+            st.session_state.pilot_id = user.get('pilot_id')
+            st.session_state.city = user.get('city')
+            st.session_state.country = user.get('country')
+            
+            return user
         
         return None
     except Exception as e:

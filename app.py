@@ -99,7 +99,6 @@ from modules.auth.auth import (
     update_student_info,
     delete_student
 )
-from modules.admin.admin_ui import admin_page
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
