@@ -36,7 +36,7 @@ def admin_page():
     st.write(f"Bienvenido, {st.session_state.username}")
 
     # Crear tres tabs para las diferentes secciones
-    tab1, tab2, tab3 = st.tabs([
+    tab1, tab2 = st.tabs([
         "Gestión de Usuarios",
         "Búsqueda de Usuarios",
     ])
