@@ -42,36 +42,28 @@ from modules.discourse.discourse_interface import (
     display_discourse_results
 )
 
-# Importaciones de base de datos
-
+# --- IMPORTACIONES DE BASE DE DATOS Y AUTH ---
 from modules.database.database_init import initialize_database_connections
 
+# Importamos lo esencial de SQL
 from modules.database.sql_db import (
      get_user,
-     get_admin_user,
-     get_student_user,
-     get_teacher_user,
-     create_user,
-     create_student_user,
-     create_teacher_user,
-     create_admin_user,
-     update_student_user,  # Agregada
-     delete_student_user,  # Agregada
      record_login,
-     record_logout,
-     get_recent_sessions,
-     get_user_total_time,
-     store_application_request,
-     store_student_feedback
+     record_logout
 )
 
-from modules.database.mongo_db import (
-    get_collection,
-    insert_document,
-    find_documents,
-    update_document,
-    delete_document
+# Importamos los controladores de MongoDB (Asegúrate de usar el archivo corregido)
+from modules.database.discourse_mongo_db import (
+    store_student_discourse_result,
+    get_student_discourse_analysis,
+    update_student_discourse_analysis,
+    delete_student_discourse_analysis
 )
+
+# Importamos el motor de enrutamiento y autenticación
+from modules.ui.ui import main as ui_main
+from modules.auth.auth import authenticate_user
+
 
 ###########SEMANTIC
 from modules.database.semantic_mongo_db import (
@@ -112,58 +104,25 @@ def initialize_nlp_models():
 
 def app_main():
     try:
-        logger.info("Entrando en app_main()")
-
-        # Inicializar el estado de la sesión
+        # 1. Inicialización de Estados
         if 'initialized' not in st.session_state:
             initialize_session_state()
             st.session_state.initialized = True
 
-        # Inicializar conexiones a bases de datos si no se ha hecho
+        # 2. Conexiones a DB y Modelos NLP
         if 'db_initialized' not in st.session_state:
             st.session_state.db_initialized = initialize_database_connections()
 
-        # Cargar modelos NLP si no se ha hecho
         if 'nlp_models' not in st.session_state:
-            logger.info("Inicializando modelos NLP en la sesión")
             st.session_state.nlp_models = initialize_nlp_models()
-            logger.info("Modelos NLP inicializados y almacenados en la sesión")
 
-        # Inicializar estados de análisis si no existen
-        if 'semantic_state' not in st.session_state:
-            st.session_state.semantic_state = {
-                'last_analysis': None,
-                'analysis_count': 0
-            }
-            
-        if 'discourse_state' not in st.session_state:
-            st.session_state.discourse_state = {
-                'last_analysis': None,
-                'analysis_count': 0
-            }
-
-        # Configurar la página inicial si no está configurada
-        if 'page' not in st.session_state:
-            st.session_state.page = 'login'
-
-        # Prevenir reinicios innecesarios preservando el estado
-        if 'selected_tab' not in st.session_state:
-            st.session_state.selected_tab = 0
-
-        logger.info(f"Página actual: {st.session_state.page}")
-        logger.info(f"Rol del usuario: {st.session_state.role}")
-
-        # Dirigir el flujo a la interfaz de usuario principal
-        logger.info(f"Llamando a ui_main() desde app_main()")
+        # 3. Delegar TODO el control visual al enrutador de UI
+        # ui_main() decidirá si mostrar Login, Admin, Profesor o Estudiante
         ui_main()
 
     except Exception as e:
-        logger.error(f"Error en app_main: {str(e)}", exc_info=True)
-        st.error("Se ha producido un error en la aplicación. Por favor, inténtelo de nuevo más tarde.")
-        if st.button("Reiniciar aplicación", 
-                    key=generate_unique_key("app", "reset_button")):
-            st.session_state.clear()
-            st.rerun()
+        logger.error(f"Error crítico en app_main: {str(e)}", exc_info=True)
+        st.error("Error al cargar los módulos base.")
 
 if __name__ == "__main__":
     app_main()
