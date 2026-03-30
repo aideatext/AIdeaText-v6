@@ -1,4 +1,5 @@
 # modules/text_analysis/semantic_analysis.py
+#Prueba_mundial
 
 # 1. Importaciones estándar del sistema
 import logging
