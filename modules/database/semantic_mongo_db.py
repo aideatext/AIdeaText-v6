@@ -24,29 +24,28 @@ from .mongo_db import (
 logger = logging.getLogger(__name__)
 COLLECTION_NAME = 'student_semantic_analysis'
 
-def store_student_semantic_result(username, text, analysis_result, lang_code='en'):
+###################################################
+def store_student_semantic_result(username, group_id, text, analysis_result, lang_code='en'):
     """
-    NOMBRE PRESERVADO. Guarda el resultado del análisis semántico en MongoDB.
-    Optimizado para evitar el error 413 (Request size too large) mediante compresión.
+    Guarda el análisis semántico (archivos) vinculándolo al GRUPO.
+    Mantiene la compresión de imagen para evitar errores de tamaño (413).
     """
     try:
-        # 1. Validación de datos mínimos
-        if not all([username, text, analysis_result]):
-            logger.error("Datos insuficientes para guardar el análisis")
+        # 1. Validación de datos mínimos (ahora incluye group_id)
+        if not all([username, group_id, text, analysis_result]):
+            logger.error(f"Datos insuficientes para guardar el análisis (Grupo: {group_id})")
             return False
 
         collection = get_collection(COLLECTION_NAME)
         if collection is None:
-            logger.error(f"No se pudo obtener la colección {COLLECTION_NAME}")
             return False
 
-        # 2. Procesamiento Único del Gráfico (Optimizado y sin redundancias)
+        # 2. Procesamiento Único del Gráfico (TU LÓGICA PRESERVADA)
         concept_graph_data = analysis_result.get('concept_graph')
         final_graph_bytes = None
 
         if concept_graph_data:
             try:
-                # Convertir de base64 a bytes si es necesario
                 if isinstance(concept_graph_data, str):
                     final_graph_bytes = base64.b64decode(concept_graph_data)
                 else:
@@ -58,39 +57,46 @@ def store_student_semantic_result(username, text, analysis_result, lang_code='en
                     img = img.convert('RGB')
                 
                 output = io.BytesIO()
-                # Calidad 75% reduce el peso drásticamente sin perder claridad en los nodos
+                # Calidad 75% reduce el peso sin perder claridad
                 img.save(output, format="JPEG", quality=75, optimize=True)
                 final_graph_bytes = output.getvalue()
                 
-                logger.info(f"Grafo optimizado: {len(final_graph_bytes)} bytes para usuario {username}")
+                logger.info(f"Grafo optimizado: {len(final_graph_bytes)} bytes")
             except Exception as e:
                 logger.warning(f"Error procesando gráfico, se intentará guardar original: {str(e)}")
-                # Si falla la compresión, mantenemos los bytes originales si existen
                 if not final_graph_bytes and isinstance(concept_graph_data, bytes):
                     final_graph_bytes = concept_graph_data
 
-        # 3. Preparar el documento (Estructura limpia)
+        # 3. Gestión de 'Buzón para el Tutor' (is_latest)
+        # Marcamos análisis anteriores del grupo como no-recientes
+        try:
+            collection.update_many(
+                {'group_id': group_id, 'is_latest': True},
+                {'$set': {'is_latest': False}}
+            )
+        except Exception as e:
+            logger.warning(f"No se pudo actualizar is_latest anteriores: {e}")
+
+        # 4. Preparar el documento (Estructura para Equipos)
         analysis_document = {
-            'username': username,
+            'group_id': group_id,       # <--- NUEVO: Identificador de equipo
+            'username': username,       # Quién subió/analizó
             'timestamp': datetime.now(timezone.utc),
-            'text': text[:50000],  # Límite de seguridad para textos extremadamente largos
+            'text': text[:50000], 
             'language': lang_code,
+            'is_latest': True,          # <--- NUEVO: Indica al Tutor cuál es el archivo activo
             'analysis_type': 'standard_semantic',
             'key_concepts': analysis_result.get('key_concepts', []),
             'entities': analysis_result.get('entities', []),
-            'concept_graph': final_graph_bytes  # Los bytes ya procesados/comprimidos
+            'concept_graph': final_graph_bytes 
         }
 
-        # 4. Inserción en MongoDB
-        try:
-            result = collection.insert_one(analysis_document)
-            if result.inserted_id:
-                logger.info(f"Análisis guardado exitosamente. ID: {result.inserted_id}")
-                return True
-            return False
-        except PyMongoError as e:
-            logger.error(f"Error de inserción en MongoDB: {str(e)}")
-            return False
+        # 5. Inserción
+        result = collection.insert_one(analysis_document)
+        if result.inserted_id:
+            logger.info(f"Análisis de archivo guardado para grupo {group_id}. ID: {result.inserted_id}")
+            return True
+        return False
 
     except Exception as e:
         logger.error(f"Error inesperado en store_student_semantic_result: {str(e)}", exc_info=True)
