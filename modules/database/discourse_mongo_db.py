@@ -62,43 +62,65 @@ def store_student_discourse_result(username, text1, text2, analysis_result):
 
 # Corrección 1: Actualizar get_student_discourse_analysis para recuperar todos los campos necesarios
 
-def get_student_discourse_analysis(username, limit=100):
+def store_student_discourse_result(username, group_id, text1, text2, analysis_result, mode="evolution"):
     """
-    Recupera los análisis del discurso de un estudiante.
+    Guarda el resultado del análisis de discurso en MongoDB vinculado al grupo.
+    mode="evolution": Comparación de borradores propios.
+    mode="contrast": Comparación de fuentes externas.
     """
     try:
-        logger.info(f"Recuperando análisis de discurso para {username}")
+        # 1. Verificar validez del análisis y datos mínimos
+        if not analysis_result.get('success', False):
+            logger.error("No se puede guardar un análisis fallido")
+            return False
         
+        if not all([username, group_id, text1, text2]):
+            logger.error(f"Datos insuficientes para guardar (Grupo: {group_id})")
+            return False
+            
+        logger.info(f"Almacenando análisis de discurso ({mode}) para usuario {username} del grupo {group_id}")
+        
+        # 2. Preparar el documento base
+        document = {
+            'username': username,
+            'group_id': group_id,      # Identificador del equipo
+            'mode': mode,              # Diferenciador pedagógico
+            'timestamp': datetime.now(timezone.utc),
+            'text1': text1,
+            'text2': text2,
+            'key_concepts1': analysis_result.get('key_concepts1', []),
+            'key_concepts2': analysis_result.get('key_concepts2', []),
+            'metrics': analysis_result.get('metrics', {}) # Métricas de coherencia/avance
+        }
+        
+        # 3. Codificar gráficos a base64 (TU LÓGICA PRESERVADA)
+        for graph_key in ['graph1', 'graph2', 'combined_graph']:
+            if graph_key in analysis_result and analysis_result[graph_key] is not None:
+                if isinstance(analysis_result[graph_key], bytes):
+                    logger.info(f"Codificando {graph_key} como base64")
+                    # Codificamos a base64 y pasamos a string utf-8 para Mongo
+                    document[graph_key] = base64.b64encode(analysis_result[graph_key]).decode('utf-8')
+                    logger.info(f"{graph_key} codificado correctamente, longitud: {len(document[graph_key])}")
+                else:
+                    # Si ya viene como string (por ejemplo de un proceso previo), lo guardamos directo
+                    logger.warning(f"{graph_key} no es de tipo bytes, es: {type(analysis_result[graph_key])}")
+                    document[graph_key] = analysis_result[graph_key]
+            else:
+                logger.info(f"{graph_key} no presente en el resultado del análisis")
+        
+        # 4. Almacenar en MongoDB
         collection = get_collection(COLLECTION_NAME)
         if collection is None:
-            logger.error("No se pudo obtener la colección")
-            return []
+            logger.error("No se pudo obtener la colección de discurso")
+            return False
             
-        query = {"username": username}
-        documents = list(collection.find(query).sort("timestamp", -1).limit(limit))
-        logger.info(f"Recuperados {len(documents)} documentos de análisis de discurso")
-        
-        # Decodificar gráficos para uso en la aplicación
-        for doc in documents:
-            for graph_key in ['graph1', 'graph2', 'combined_graph']:
-                if graph_key in doc and doc[graph_key]:
-                    try:
-                        # Verificar si es string (base64) y decodificar
-                        if isinstance(doc[graph_key], str):
-                            logger.info(f"Decodificando {graph_key} de base64 a bytes")
-                            doc[graph_key] = base64.b64decode(doc[graph_key])
-                            logger.info(f"{graph_key} decodificado correctamente, tamaño: {len(doc[graph_key])} bytes")
-                        elif not isinstance(doc[graph_key], bytes):
-                            logger.warning(f"{graph_key} no es ni string ni bytes: {type(doc[graph_key])}")
-                    except Exception as decode_error:
-                        logger.error(f"Error decodificando {graph_key}: {str(decode_error)}")
-                        doc[graph_key] = None
-        
-        return documents
+        result = collection.insert_one(document)
+        logger.info(f"Análisis de discurso ({mode}) guardado con ID: {result.inserted_id}")
+        return True
         
     except Exception as e:
-        logger.error(f"Error recuperando análisis de discurso: {str(e)}")
-        return []
+        logger.error(f"Error guardando análisis de discurso: {str(e)}")
+        return False
         
 #####################################################################################
         
