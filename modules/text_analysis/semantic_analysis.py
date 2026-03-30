@@ -295,31 +295,118 @@ def create_concept_graph(doc, lang_code='es'):
     
 ###############################################################################
 
-def visualize_concept_graph(G, lang_code, node_scale=300):
-    import numpy as np # Asegurar importación
-    fig, ax = plt.subplots(figsize=(10, 8))
-    
-    pos = nx.spring_layout(G, k=1.5, iterations=50, seed=42)
-    
-    # ESCALA LOGARÍTMICA: Evita que nodos con mucho peso tapen el grafo
-    # np.log1p(x) es log(1+x), ideal para pesos que empiezan en 1
-    node_sizes = [np.log1p(G.nodes[n].get('weight', 1)) * node_scale for n in G.nodes()]
-    
-    nx.draw_networkx_nodes(G, pos, 
-                           node_size=node_sizes,
-                           node_color='#90EE90', 
-                           alpha=0.7, 
-                           ax=ax)
-    
-    nx.draw_networkx_labels(G, pos, font_size=9, font_weight='bold', ax=ax)
-    
-    # Aristas proporcionales pero discretas
-    edge_weights = [np.log1p(G[u][v].get('weight', 1)) * 2 for u, v in G.edges()]
-    nx.draw_networkx_edges(G, pos, width=edge_weights, alpha=0.3, ax=ax, edge_color='gray')
-    
-    ax.set_title(f"Red de Sustantivos (CRA) - {lang_code}", fontsize=14)
-    ax.axis('off')
-    return fig
+import numpy as np
+import networkx as nx
+import matplotlib.pyplot as plt
+
+def visualize_concept_graph(G, lang_code, node_scale=None):
+    try:
+        # 1. Diccionario de traducciones (Mantenemos tu versión original)
+        GRAPH_LABELS = {
+            'es': {
+                'concept_network': 'Relaciones entre conceptos clave',
+                'concept_centrality': 'Centralidad de conceptos clave'
+            },
+            'en': {
+                'concept_network': 'Relationships between key concepts',
+                'concept_centrality': 'Concept centrality'
+            },
+            'fr': {
+                'concept_network': 'Relations entre concepts clés',
+                'concept_centrality': 'Centralité des concepts'
+            },
+            'pt': {
+                'concept_network': 'Relações entre conceitos-chave',
+                'concept_centrality': 'Centralidade dos conceitos'
+            }
+        }
+
+        # 2. Obtener traducciones (inglés por defecto)
+        translations = GRAPH_LABELS.get(lang_code, GRAPH_LABELS['en'])
+        
+        # Configuración de la figura
+        fig, ax = plt.subplots(figsize=(15, 10))
+        
+        if not G.nodes():
+            logger.warning("Grafo vacío, retornando figura vacía")
+            return fig
+            
+        # Convertir a grafo dirigido para flechas
+        DG = nx.DiGraph(G)
+        
+        # ESCALA DE MEDICIÓN ORIGINAL: Centralidad (Grados de 0 a 1)
+        centrality = nx.degree_centrality(G)
+        
+        # Layout consistente
+        pos = nx.spring_layout(DG, k=2.5, iterations=50, seed=42)
+        
+        # 3. Escalado Híbrido (Tu factor original + Ajuste Adaptativo)
+        num_nodes = len(DG.nodes())
+        
+        # Si la función principal no envía una escala, usamos tu lógica original
+        if node_scale is None:
+            scale_factor = 1000 if num_nodes < 10 else 500 if num_nodes < 20 else 300
+        else:
+            scale_factor = node_scale
+            
+        # SOLUCIÓN 0.9MB: Aplicamos logaritmo para evitar que un nodo gigante aplaste a los demás
+        node_sizes = [np.log1p(DG.nodes[node].get('weight', 1)) * scale_factor for node in DG.nodes()]
+        
+        # Suavizamos también el grosor de las flechas
+        edge_widths = [np.log1p(DG[u][v].get('weight', 1)) for u, v in DG.edges()]
+        
+        # COLORES ORIGINALES: viridis (va de morado oscuro -> verde -> amarillo brillante)
+        node_colors = [plt.cm.viridis(centrality[node]) for node in DG.nodes()]
+        
+        # Dibujar elementos del grafo
+        nx.draw_networkx_nodes(
+            DG, pos, 
+            node_size=node_sizes,
+            node_color=node_colors,
+            alpha=0.85,
+            ax=ax
+        )
+        
+        nx.draw_networkx_edges(
+            DG, pos,
+            width=edge_widths,
+            alpha=0.5,
+            edge_color='gray',
+            arrows=True,
+            arrowsize=20,
+            arrowstyle='->',
+            connectionstyle='arc3,rad=0.2',
+            ax=ax
+        )
+        
+        # Etiquetas de nodos
+        font_size = 12 if num_nodes < 10 else 10 if num_nodes < 20 else 9
+        nx.draw_networkx_labels(
+            DG, pos,
+            font_size=font_size,
+            font_weight='bold',
+            bbox=dict(facecolor='white', edgecolor='none', alpha=0.7, boxstyle='round,pad=0.3'),
+            ax=ax
+        )
+        
+        # Barra de color (centralidad de 0 a 1, IDÉNTICA a tu versión)
+        sm = plt.cm.ScalarMappable(
+            cmap=plt.cm.viridis, 
+            norm=plt.Normalize(vmin=0, vmax=1)
+        )
+        sm.set_array([])
+        plt.colorbar(sm, ax=ax, label=translations['concept_centrality'])
+        
+        # Título del gráfico
+        plt.title(translations['concept_network'], pad=20, fontsize=16)
+        ax.set_axis_off()
+        plt.tight_layout()
+        
+        return fig
+        
+    except Exception as e:
+        logger.error(f"Error en visualize_concept_graph: {str(e)}", exc_info=True)
+        return plt.figure()
 
 ########################################################################
 def create_entity_graph(entities):
