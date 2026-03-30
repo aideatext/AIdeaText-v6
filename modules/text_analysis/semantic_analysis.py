@@ -103,65 +103,92 @@ def fig_to_bytes(fig):
 ###########################################################
 def perform_semantic_analysis(text: str, nlp, lang_code: str) -> dict:
     """
-    Versión optimizada UNIFE 2026: 
-    Maneja archivos grandes (0.9MB+) limitando a Top 30 conceptos.
+    Analizador Adaptativo Piloto UNIFE 2026.
+    Ajusta la densidad del grafo según la extensión del documento.
     """
     if not text or not nlp or not lang_code:
         return {"success": False, "error": "Parámetros inválidos"}
 
     try:
-        logger.info(f"Procesando documento extenso — idioma: {lang_code}")
+        # 1. ESCALA DE EXTENSIÓN (Estrategia sugerida por Manuel)
+        word_count = len(text.split())
         
-        # 1. Procesamiento inicial con spaCy
+        if word_count < 1000:
+            # Nivel 1: Inicial (Resumen/Avance)
+            max_nodes = 40
+            min_edge_weight = 1
+            node_scale = 600  # Nodos grandes y detallados
+        elif word_count <= 3000:
+            # Nivel 2: Consolidación (Paper)
+            max_nodes = 30
+            min_edge_weight = 2
+            node_scale = 400
+        elif word_count <= 5000:
+            # Nivel 3: Extenso (Capítulo)
+            max_nodes = 25
+            min_edge_weight = 3
+            node_scale = 250
+        else:
+            # Nivel 4: Macro (Tesis completa > 5000 palabras)
+            max_nodes = 20
+            min_edge_weight = 4
+            node_scale = 150  # Nodos pequeños para evitar colapso
+
+        logger.info(f"Nivel de análisis detectado: {word_count} palabras. Max nodos: {max_nodes}")
+
+        # 2. Procesamiento y Extracción de Conceptos
         doc = nlp(text)
-        
-        # 2. Identificar Top 30 conceptos (Filtro de Densidad)
         stopwords = get_custom_stopwords(lang_code)
-        # Obtenemos los 30 más relevantes para que el grafo sea legible
-        key_concepts = identify_key_concepts(doc, stopwords=stopwords)[:30]
+        
+        # Limitamos los conceptos según la escala para mantener legibilidad
+        key_concepts = identify_key_concepts(doc, stopwords=stopwords)[:max_nodes]
 
         if not key_concepts:
             return {"success": False, "error": "No se identificaron conceptos clave"}
 
-        # 3. Generar el Grafo (Solo Sustantivos POS)
-        # La función interna create_concept_graph ya filtra NOUN/PROPN
+        # 3. Generación y Poda del Grafo (CRA)
         concept_graph_nx = create_concept_graph(doc, lang_code=lang_code)
         
-        # 4. FILTRADO CRÍTICO DE NODOS: 
-        # Eliminamos todo lo que no esté en el Top 30 para evitar la "pelota de pelos"
+        # Poda de Nodos: Solo dejamos los Top N
         nodes_to_keep = [c[0] for c in key_concepts]
         nodes_to_remove = [n for n in concept_graph_nx.nodes if n not in nodes_to_keep]
         concept_graph_nx.remove_nodes_from(nodes_to_remove)
 
-        # 5. Métricas M2 (Robustez)
+        # Poda de Aristas: Eliminamos conexiones débiles según la escala
+        weak_edges = [(u, v) for u, v, d in concept_graph_nx.edges(data=True) if d.get('weight', 1) < min_edge_weight]
+        concept_graph_nx.remove_edges_from(weak_edges)
+
+        # 4. Métricas y Serialización
         if _METRICS_AVAILABLE:
             m2_metrics = calculate_M2(concept_graph_nx)
             gdict = graph_to_dict(concept_graph_nx)
         else:
             m2_metrics, gdict = {}, {}
 
-        # 6. Visualización limpia
+        # 5. Visualización con ESCALA LOGARÍTMICA
         plt.clf()
-        fig = visualize_concept_graph(concept_graph_nx, lang_code)
+        # Pasamos node_scale a la función de dibujo
+        fig = visualize_concept_graph(concept_graph_nx, lang_code, node_scale=node_scale)
         graph_bytes = fig_to_bytes(fig)
         plt.close(fig)
 
-        # 7. RETORNO COMPLETO (Arregla el error del Tutor Virtual)
+        # 6. Retorno (Estructura fija para conexión con Sidebar/Tutor)
         return {
             "success": True,
-            "text": text,                # <--- Conexión necesaria para el Sidebar
+            "text": text,
             "key_concepts": key_concepts,
             "concept_graph": graph_bytes,
             "concept_graph_nx": concept_graph_nx,
             "graph_dict": gdict,
-            "metrics": {                 # <--- Estructura necesaria para el Sidebar
+            "metrics": {
                 "key_concepts": key_concepts,
-                "M2": m2_metrics
+                "M2": m2_metrics,
+                "word_count": word_count
             }
         }
 
     except Exception as e:
-        logger.error(f"Error en análisis semántico: {str(e)}", exc_info=True)
+        logger.error(f"Error en perform_semantic_analysis: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
 ############################################################ 
@@ -268,101 +295,31 @@ def create_concept_graph(doc, lang_code='es'):
     
 ###############################################################################
 
-def visualize_concept_graph(G, lang_code):
-    try:
-        # 1. Diccionario de traducciones
-        GRAPH_LABELS = {
-            'es': {
-                'concept_network': 'Relaciones entre conceptos clave',
-                'concept_centrality': 'Centralidad de conceptos clave'
-            },
-            'en': {
-                'concept_network': 'Relationships between key concepts',
-                'concept_centrality': 'Concept centrality'
-            },
-            'fr': {
-                'concept_network': 'Relations entre concepts clés',
-                'concept_centrality': 'Centralité des concepts'
-            },
-            'pt': {
-                'concept_network': 'Relações entre conceitos-chave',
-                'concept_centrality': 'Centralidade dos conceitos'
-            }
-        }
-
-        # 2. Obtener traducciones (inglés por defecto)
-        translations = GRAPH_LABELS.get(lang_code, GRAPH_LABELS['en'])
-        
-        # Configuración de la figura
-        fig, ax = plt.subplots(figsize=(15, 10))
-        
-        if not G.nodes():
-            logger.warning("Grafo vacío, retornando figura vacía")
-            return fig
-            
-        # Convertir a grafo dirigido para flechas
-        DG = nx.DiGraph(G)
-        centrality = nx.degree_centrality(G)
-        
-        # Layout consistente
-        pos = nx.spring_layout(DG, k=2, iterations=50, seed=42)
-        
-        # Escalado de elementos visuales
-        num_nodes = len(DG.nodes())
-        scale_factor = 1000 if num_nodes < 10 else 500 if num_nodes < 20 else 200
-        node_sizes = [DG.nodes[node].get('weight', 1) * scale_factor for node in DG.nodes()]
-        edge_widths = [DG[u][v].get('weight', 1) for u, v in DG.edges()]
-        node_colors = [plt.cm.viridis(centrality[node]) for node in DG.nodes()]
-        
-        # Dibujar elementos del grafo
-        nx.draw_networkx_nodes(
-            DG, pos, 
-            node_size=node_sizes,
-            node_color=node_colors,
-            alpha=0.7,
-            ax=ax
-        )
-        
-        nx.draw_networkx_edges(
-            DG, pos,
-            width=edge_widths,
-            alpha=0.6,
-            edge_color='gray',
-            arrows=True,
-            arrowsize=20,
-            arrowstyle='->',
-            connectionstyle='arc3,rad=0.2',
-            ax=ax
-        )
-        
-        # Etiquetas de nodos
-        font_size = 12 if num_nodes < 10 else 10 if num_nodes < 20 else 8
-        nx.draw_networkx_labels(
-            DG, pos,
-            font_size=font_size,
-            font_weight='bold',
-            bbox=dict(facecolor='white', edgecolor='none', alpha=0.7),
-            ax=ax
-        )
-        
-        # Barra de color (centralidad)
-        sm = plt.cm.ScalarMappable(
-            cmap=plt.cm.viridis, 
-            norm=plt.Normalize(vmin=0, vmax=1)
-        )
-        sm.set_array([])
-        plt.colorbar(sm, ax=ax, label=translations['concept_centrality'])
-        
-        # Título del gráfico
-        plt.title(translations['concept_network'], pad=20, fontsize=14)
-        ax.set_axis_off()
-        plt.tight_layout()
-        
-        return fig
-        
-    except Exception as e:
-        logger.error(f"Error en visualize_concept_graph: {str(e)}")
-        return plt.figure()
+def visualize_concept_graph(G, lang_code, node_scale=300):
+    import numpy as np # Asegurar importación
+    fig, ax = plt.subplots(figsize=(10, 8))
+    
+    pos = nx.spring_layout(G, k=1.5, iterations=50, seed=42)
+    
+    # ESCALA LOGARÍTMICA: Evita que nodos con mucho peso tapen el grafo
+    # np.log1p(x) es log(1+x), ideal para pesos que empiezan en 1
+    node_sizes = [np.log1p(G.nodes[n].get('weight', 1)) * node_scale for n in G.nodes()]
+    
+    nx.draw_networkx_nodes(G, pos, 
+                           node_size=node_sizes,
+                           node_color='#90EE90', 
+                           alpha=0.7, 
+                           ax=ax)
+    
+    nx.draw_networkx_labels(G, pos, font_size=9, font_weight='bold', ax=ax)
+    
+    # Aristas proporcionales pero discretas
+    edge_weights = [np.log1p(G[u][v].get('weight', 1)) * 2 for u, v in G.edges()]
+    nx.draw_networkx_edges(G, pos, width=edge_weights, alpha=0.3, ax=ax, edge_color='gray')
+    
+    ax.set_title(f"Red de Sustantivos (CRA) - {lang_code}", fontsize=14)
+    ax.axis('off')
+    return fig
 
 ########################################################################
 def create_entity_graph(entities):
