@@ -39,6 +39,7 @@ def clean_text_content(text: str) -> str:
     
     return text
 
+#######################################################################
 def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int = None) -> list:
     """
     Recupera el historial del chat con codificación UTF-8 segura.
@@ -92,7 +93,7 @@ def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int =
         logger.error(f"Error al recuperar historial de chat: {str(e)}")
         return []
 
-
+##############################################
 def store_chat_history(username: str, messages: list, analysis_type: str = 'sidebar', metadata: dict = None) -> bool:
     """
     Guarda el historial del chat con codificación UTF-8 segura.

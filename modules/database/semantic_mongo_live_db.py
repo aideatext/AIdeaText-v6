@@ -26,81 +26,60 @@ COLLECTION_NAME = 'student_semantic_live_analysis'
 ##########################################
 ##########################################
 
-def store_student_semantic_live_result(username, text, analysis_result, lang_code='en'):
+def store_student_semantic_live_result(username, group_id, text, analysis_result, lang_code='es'):
     """
-    Versión optimizada:
-    - Elimina redundancias en el procesamiento de bytes.
-    - Soluciona el error 413 (RequestEntityTooLarge) mediante compresión JPEG.
-    - Manejo de fechas nativo para MongoDB.
+    Guarda o ACTUALIZA el análisis actual del grupo. 
+    Al usar upsert=True, el Tutor Virtual siempre leerá la última versión.
     """
     try:
-        # 1. Validación inicial y obtención de colección
-        if not all([username, text, analysis_result]):
-            logger.error("Parámetros incompletos para guardar análisis")
+        if not all([username, group_id, text]):
+            logger.error("Faltan datos esenciales (username, group_id o texto)")
             return False
 
         collection = get_collection(COLLECTION_NAME)
-        if collection is None:
-            logger.error(f"No se pudo obtener la colección {COLLECTION_NAME}")
-            return False
+        if collection is None: return False
 
-        # 2. Procesamiento y Optimización del Gráfico (Sin redundancias)
-        graph_data = analysis_result.get('concept_graph')
-        final_graph_bytes = None
+        # Extraemos el grafo (el corazón de la retroalimentación del tutor)
+        graph_b64 = analysis_result.get('concept_graph')
 
-        if graph_data:
-            try:
-                # Convertir a bytes si viene en base64 (string)
-                if isinstance(graph_data, str):
-                    final_graph_bytes = base64.b64decode(graph_data)
-                else:
-                    final_graph_bytes = graph_data
-
-                # Optimización de tamaño para evitar error 413 en Azure/Mongo
-                # Solo comprimimos si detectamos que existe la imagen
-                img = Image.open(io.BytesIO(final_graph_bytes))
-                if img.mode != 'RGB':
-                    img = img.convert('RGB')
-                
-                output = io.BytesIO()
-                # JPEG al 75% mantiene legibilidad y reduce el peso drásticamente
-                img.save(output, format="JPEG", quality=75, optimize=True)
-                final_graph_bytes = output.getvalue()
-                
-                logger.info(f"Grafo optimizado para {username} ({len(final_graph_bytes)} bytes)")
-            except Exception as e:
-                logger.warning(f"Error optimizando imagen, se usará formato original: {e}")
-                # Si falla la optimización, mantenemos lo que teníamos (si eran bytes)
-                final_graph_bytes = final_graph_bytes if isinstance(final_graph_bytes, bytes) else None
-
-        # 3. Preparación del documento (Directo y limpio)
-        analysis_document = {
-            'username': username,
-            'timestamp': datetime.now(timezone.utc),
-            'text': text[:50000],  # Límite de seguridad
-            'analysis_type': 'semantic_live',
-            'language': lang_code,
+        # Estructura del documento "Buzón para el Tutor"
+        document = {
+            'group_id': group_id,      # Clave de búsqueda para el equipo
+            'username': username,      # Último editor
+            'text': text,              # El texto actual del cuadro
+            'lang_code': lang_code,
             'key_concepts': analysis_result.get('key_concepts', []),
-            'concept_centrality': analysis_result.get('concept_centrality', {}),
-            'concept_graph': final_graph_bytes  # Insertamos los bytes ya procesados
+            'concept_graph': graph_b64,
+            'timestamp': datetime.now(timezone.utc),
+            'status': 'active'
         }
 
-        # 4. Inserción en base de datos
-        try:
-            result = collection.insert_one(analysis_document)
-            if result.inserted_id:
-                logger.info(f"Análisis guardado exitosamente. ID: {result.inserted_id}")
-                return True
-            return False
-        except PyMongoError as e:
-            logger.error(f"Error de inserción en MongoDB: {str(e)}")
-            return False
+        # LA MAGIA: update_one con upsert=True
+        # Si el group_id ya existe, lo actualiza. Si no, lo crea.
+        result = collection.update_one(
+            {'group_id': group_id}, 
+            {'$set': document}, 
+            upsert=True
+        )
+        
+        logger.info(f"Pizarrón actualizado para grupo {group_id}. Listo para el Tutor.")
+        return True
 
     except Exception as e:
-        logger.error(f"Error inesperado en store_student_semantic_live_result: {str(e)}", exc_info=True)
+        logger.error(f"Error al actualizar el pizarrón en vivo: {str(e)}")
         return False
 
 ##########################################
+def get_live_analysis_for_tutor(group_id):
+    """
+    Función que usará el Tutor Virtual para obtener el contexto actual.
+    """
+    try:
+        collection = get_collection(COLLECTION_NAME)
+        return collection.find_one({'group_id': group_id})
+    except Exception as e:
+        logger.error(f"Error al recuperar contexto para el tutor: {e}")
+        return None
 ##########################################
 def get_student_semantic_live_analysis(username, limit=10):
     """
