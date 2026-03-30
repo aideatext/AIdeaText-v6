@@ -2,6 +2,7 @@
 import streamlit as st
 from .chat_process import ChatProcessor
 from ..database.chat_mongo_db import store_chat_history
+# Estas son las que necesitan el __init__.py
 from ..metrics.m1_m2 import calculate_M1, interpret_M1  # <--- AÑADIR
 from ..text_analysis.semantic_analysis import create_concept_graph # <--- AÑADIR
 import logging
