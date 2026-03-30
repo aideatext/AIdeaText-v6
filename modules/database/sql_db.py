@@ -56,7 +56,7 @@ def get_teacher_user(username):
     return get_user(username, role='Profesor')
 
 # --- CREACIÓN DE USUARIOS (Añadiendo group_id) ---
-def create_user(username, password, role, class_id, institution, academic_stage, faculty, pilot_id, city, country, full_name=None):
+def create_user_expanded(username, password, role, class_id, institution, academic_stage, faculty, pilot_id, city, country, full_name=None):
     query = """
         INSERT INTO users (
             id, password, role, class_id, institution, academic_stage, 
