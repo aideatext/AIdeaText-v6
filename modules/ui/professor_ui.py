@@ -74,15 +74,27 @@ def professor_page():
             st.info(f"No se han registrado actividades recientes para el grupo {grupo_seleccionado}.")
 
     with tab2:
-        st.write(f"### Estudiantes Registrados en {grupo_seleccionado}")
+        st.subheader("Lista de Estudiantes")
         
-        # Consulta SQL para traer la lista de alumnos de ese grupo específico
-        query_alumnos = "SELECT id as Usuario, full_name as Nombre, email as Correo FROM users WHERE class_id = %s AND role = 'Estudiante'"
-        alumnos = execute_query(query_alumnos, (grupo_seleccionado,))
+        # 1. Obtenemos el ID de la profe (ej: MG-EDU-UNIFE-LIM)
+        prof_id = st.session_state.get('username')
         
-        if alumnos:
-            df_alumnos = pd.DataFrame(alumnos)
-            st.table(df_alumnos)
-            st.download_button("Descargar Lista (CSV)", df_alumnos.to_csv(index=False), "lista_alumnos.csv", "text/csv")
+        # 2. Extraemos las iniciales (las primeras 2 letras: 'MG')
+        # Esto garantiza que encuentre a cualquier alumno que empiece por MG-
+        prof_prefix = f"{prof_id[:2]}-%" 
+
+        # 3. Consulta SQL corregida para el piloto
+        query = """
+            SELECT id as "Usuario", full_name as "Nombre", level as "Ciclo" 
+            FROM users 
+            WHERE id LIKE %s AND role = 'Estudiante'
+        """
+        
+        # Ejecutamos la consulta
+        students = execute_query(query, (prof_prefix,))
+        
+        if students:
+            st.table(pd.DataFrame(students))
+            st.success(f"Se encontraron {len(students)} estudiantes vinculados a su código.")
         else:
-            st.info("No hay alumnos inscritos en este grupo.")
+            st.info(f"No se encontraron alumnos con el prefijo {prof_id[:2]}. Verifique la carga masiva.")
