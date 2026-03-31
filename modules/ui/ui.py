@@ -4,7 +4,7 @@ from PIL import Image
 from translations import get_translations
 from modules.ui.user_page import user_page
 from modules.admin.admin_ui import admin_page  # Importamos Admin
-from modules.ui.professor_ui import professor_page  # Importamos Profesor
+from modules.ui.professor.professor_ui import professor_page  # Importamos Profesor
 from modules.auth.auth import authenticate_user
 from modules.database.sql_db import execute_query, create_user_expanded
 
@@ -99,7 +99,7 @@ def main():
             admin_page()
         
         elif role == 'Profesor':
-            from modules.ui.professor_ui import professor_page
+            from modules.ui.professor.professor_ui import professor_page
             professor_page()
             
         elif role == 'Estudiante':
