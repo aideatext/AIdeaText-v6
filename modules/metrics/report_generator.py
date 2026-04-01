@@ -26,23 +26,27 @@ def create_docx_report(student_name, df_student):
         row[1].text = f"{inicio[m[1]]:.4f}"
         row[2].text = f"{final[m[1]]:.4f}"
 
-    doc.add_heading('Evidencia de Grafos', level=1)
-    for label, hito in [("Mapa Inicial", inicio), ("Mapa Actual", final)]:
-        doc.add_heading(label, level=2)
-        img_data = hito.get('img_raw')
-        if img_data:
-            try:
-                # Si es base64 (string), decodificar. Si es bytes, usar directo.
-                if isinstance(img_data, str) and ',' in img_data:
-                    img_data = img_data.split(',')[1]
-                if isinstance(img_data, str):
-                    img_data = base64.b64decode(img_data)
-                
-                doc.add_picture(io.BytesIO(img_data), width=Inches(4.5))
-            except:
-                doc.add_paragraph("[Error procesando imagen]")
-        else:
-            doc.add_paragraph("[Sin imagen registrada]")
+    doc.add_heading('3. Mapas Semánticos del progreso de la tesis', level=1)
+        
+    for label, hito in [("Estado Inicial", df_student.iloc[0]), ("Estado Actual", df_student.iloc[-1])]:
+            doc.add_heading(label, level=2)
+            img_data = hito.get('img_raw')
+            
+            if img_data:
+                try:
+                    # Limpieza de Base64
+                    if isinstance(img_data, str):
+                        if "base64," in img_data:
+                            img_data = img_data.split("base64,")[1]
+                        img_data = base64.b64decode(img_data.strip())
+                    
+                    # Inserción en Word
+                    image_stream = io.BytesIO(img_data)
+                    doc.add_picture(image_stream, width=Inches(4.5))
+                except Exception as e:
+                    doc.add_paragraph(f"[No se pudo renderizar la imagen: {str(e)}]")
+            else:
+                doc.add_paragraph("[Sin evidencia visual registrada]")
 
     buffer = io.BytesIO()
     doc.save(buffer)
