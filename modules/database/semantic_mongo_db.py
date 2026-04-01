@@ -104,74 +104,38 @@ def store_student_semantic_result(username, group_id, text, analysis_result, lan
 
 ####################################################################################
 def get_student_semantic_analysis(username=None, group_id=None, limit=None):
-    """
-    Recupera los análisis semánticos filtrando por usuario O por grupo.
-    Mantiene la normalización de fechas y la integridad del pipeline de agregación.
-    """
     try:
         collection = get_collection(COLLECTION_NAME)
-        if collection is None:
-            logger.error("No se pudo obtener la colección semantic")
-            return []
+        if collection is None: return []
 
-        # 1. Construcción dinámica del filtro (Query)
-        # Siempre filtramos que el grafo exista
+        # 1. Filtro dinámico: Si hay group_id, traemos a todos los del grupo
         query = {"concept_graph": {"$exists": True, "$ne": None}}
-        
-        if username:
-            query["username"] = username
         if group_id:
             query["group_id"] = group_id
+        elif username:
+            query["username"] = username
 
-        # 2. Pipeline de agregación
         pipeline = [
             {"$match": query},
             {"$addFields": {
-                "normalized_date": {
-                    "$convert": {
-                        "input": "$timestamp",
-                        "to": "date",
-                        "onError": None,
-                        "onNull": None
-                    }
-                }
+                "normalized_date": {"$convert": {"input": "$timestamp", "to": "date", "onError": None}}
             }},
-            # Orden cronológico descendente (más reciente primero)
             {"$sort": {"normalized_date": -1}}
         ]
         
-        # Aplicamos el límite si se especifica
-        if limit is not None:
-            pipeline.append({"$limit": limit})
+        if limit: pipeline.append({"$limit": limit})
             
-        # 3. Proyección de campos (IMPORTANTE: Se añade analysis_result para M1/M2)
         pipeline.append({
             "$project": {
-                "username": 1,
-                "group_id": 1,
-                "timestamp": 1,
-                "text": 1,
-                "key_concepts": 1,
-                "concept_graph": 1,
-                "analysis_result": 1,  # <--- Crucial para el Dashboard
-                "analysis_type": 1,
-                "_id": 1
+                "username": 1, "group_id": 1, "timestamp": 1,
+                "text": 1, "key_concepts": 1, "concept_graph": 1,
+                "analysis_result": 1, "_id": 1
             }
         })
         
-        results = list(collection.aggregate(pipeline))
-        
-        # Logging informativo
-        contexto = f"grupo {group_id}" if group_id else f"usuario {username}"
-        logger.info(f"Recuperados {len(results)} análisis para {contexto}")
-        
-        return results
-        
-    except PyMongoError as e:
-        logger.error(f"Error de MongoDB en la agregación: {str(e)}")
-        return []
+        return list(collection.aggregate(pipeline))
     except Exception as e:
-        logger.error(f"Error inesperado al recuperar análisis: {str(e)}")
+        logger.error(f"Error en semantic analysis: {e}")
         return []
 ####################################################################################################
 

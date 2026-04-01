@@ -1,4 +1,5 @@
 
+# modules/database/semantic_mongo_live_db.py
 # Importaciones estándar
 import logging
 import io
@@ -81,62 +82,38 @@ def get_live_analysis_for_tutor(group_id):
         logger.error(f"Error al recuperar contexto para el tutor: {e}")
         return None
 ##########################################
-def get_student_semantic_live_analysis(username, limit=10):
-    """
-    Versión optimizada: Elimina redundancia y garantiza orden cronológico 
-    mediante normalización de fechas al vuelo.
-    """
+def get_student_semantic_live_analysis(username=None, group_id=None, limit=10):
     try:
         collection = get_collection(COLLECTION_NAME)
-        if collection is None:
-            logger.error("No se pudo obtener la colección")
-            return []
+        if collection is None: return []
 
-        # Criterio de búsqueda: usuario específico y que tenga el grafo generado
-        query = {
-            "username": username,
-            "concept_graph": {"$exists": True, "$ne": None}
-        }
+        # CAMBIO: Priorizamos group_id para unificar la visualización
+        query = {"concept_graph": {"$exists": True, "$ne": None}}
+        if group_id:
+            query["group_id"] = group_id
+        elif username:
+            query["username"] = username
 
-        # Pipeline de Agregación para resolver el desorden de fechas (2025 vs 2026)
         pipeline = [
             {"$match": query},
-            # Convertimos el timestamp a objeto Date real para que el sort sea exacto
             {"$addFields": {
-                "sort_date": {
-                    "$convert": {
-                        "input": "$timestamp",
-                        "to": "date",
-                        "onError": "$timestamp", # Si falla, mantiene el valor original
-                        "onNull": "$timestamp"
-                    }
-                }
+                "sort_date": {"$convert": {"input": "$timestamp", "to": "date", "onError": "$timestamp"}}
             }},
-            # Ordenamos por la fecha normalizada de forma descendente (más reciente primero)
             {"$sort": {"sort_date": -1}},
             {"$limit": limit},
-            # Proyectamos solo los campos necesarios para no sobrecargar la memoria
             {"$project": {
+                "username": 1,
+                "group_id": 1,
                 "timestamp": 1,
                 "text": 1,
                 "key_concepts": 1,
                 "concept_graph": 1,
-                "analysis_type": 1,
                 "_id": 1
             }}
         ]
-
-        # Ejecutamos una única vez la consulta
-        results = list(collection.aggregate(pipeline))
-        
-        logger.info(f"Recuperados {len(results)} análisis 'live' para {username}")
-        return results
-
-    except PyMongoError as e:
-        logger.error(f"Error de MongoDB en live analysis: {str(e)}")
-        return []
+        return list(collection.aggregate(pipeline))
     except Exception as e:
-        logger.error(f"Error inesperado en live analysis: {str(e)}")
+        logger.error(f"Error en live analysis: {e}")
         return []
 
 #######################################################

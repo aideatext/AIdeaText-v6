@@ -40,25 +40,18 @@ def clean_text_content(text: str) -> str:
     return text
 
 #######################################################################
-def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int = None) -> list:
-    """
-    Recupera el historial del chat con codificación UTF-8 segura.
-    """
+def get_chat_history(username: str = None, group_id: str = None, analysis_type: str = 'sidebar', limit: int = None) -> list:
     try:
+        # Ahora permite buscar por GRUPO o por USUARIO
         query = {
-                    "username": username,
-                    "$or": [
-                        {"analysis_type": analysis_type},
-                        {"analysis_type": {"$exists": False}},
-                        {"analysis_type": None}
-                    ]
-                }
-        
+            "$or": [{"analysis_type": analysis_type}, {"analysis_type": None}]
+        }
+        if group_id:
+            query["group_id"] = group_id
+        else:
+            query["username"] = username
+
         collection = get_collection(COLLECTION_NAME)
-        if collection is None:
-            logger.error("No se pudo obtener la colección de chat")
-            return []
-            
         cursor = collection.find(query).sort("timestamp", -1)
         if limit:
             cursor = cursor.limit(limit)
@@ -94,9 +87,9 @@ def get_chat_history(username: str, analysis_type: str = 'sidebar', limit: int =
         return []
 
 ##############################################
-def store_chat_history(username: str, messages: list, analysis_type: str = 'sidebar', metadata: dict = None) -> bool:
+def store_chat_history(username: str, group_id: str, messages: list, analysis_type: str = 'sidebar', metadata: dict = None) -> bool:
     """
-    Guarda el historial del chat con codificación UTF-8 segura.
+    Guarda el historial del chat vinculándolo a un usuario y a su grupo.
     """
     try:
         collection = get_collection(COLLECTION_NAME)
@@ -117,15 +110,17 @@ def store_chat_history(username: str, messages: list, analysis_type: str = 'side
                 logger.error(f"Error procesando mensaje para almacenar: {str(msg_error)}")
                 continue
         
+        # Ahora group_id ya está definido porque entra como parámetro
         chat_document = {
             'username': username,
-            'timestamp': datetime.now(timezone.utc), # Mejor práctica
+            'group_id': group_id,  
+            'timestamp': datetime.now(timezone.utc),
             'messages': formatted_messages,
             'analysis_type': analysis_type,
             'metadata': metadata or {}
         }
         
-        # Verificación adicional de UTF-8 antes de insertar
+        # Verificación de seguridad UTF-8
         try:
             import json
             json.dumps(chat_document, ensure_ascii=False)
@@ -135,10 +130,9 @@ def store_chat_history(username: str, messages: list, analysis_type: str = 'side
         
         result = collection.insert_one(chat_document)
         if result.inserted_id:
-            logger.info(f"Chat guardado para {username} con ID: {result.inserted_id}")
+            logger.info(f"Chat guardado para {username} en grupo {group_id}")
             return True
             
-        logger.error("No se pudo insertar el documento")
         return False
         
     except Exception as e:

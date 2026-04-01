@@ -53,16 +53,16 @@ def store_student_discourse_result(username, text1, text2, analysis_result, grou
 
 ###########################################################################
 def get_student_discourse_analysis(username=None, group_id=None, limit=10):
-    """
-    Recupera los análisis. Requerido por student_activities_v2.py
-    """
     try:
         collection = get_collection(COLLECTION_NAME)
         if collection is None: return []
             
         query = {}
-        if username: query["username"] = username
-        if group_id: query["group_id"] = group_id
+        # Prioridad al grupo para visualización colectiva
+        if group_id: 
+            query["group_id"] = group_id
+        elif username: 
+            query["username"] = username
             
         documents = list(collection.find(query).sort("timestamp", -1).limit(limit))
         
