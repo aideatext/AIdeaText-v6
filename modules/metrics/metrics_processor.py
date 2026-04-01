@@ -1,10 +1,7 @@
-#modules/metrics/metrics_processor.py
 import pandas as pd
 import numpy as np
 from datetime import datetime, timezone
-import logging
-
-logger = logging.getLogger(__name__)
+import re
 
 def process_semantic_data(raw_data):
     if not raw_data:
@@ -14,27 +11,33 @@ def process_semantic_data(raw_data):
     for entry in raw_data:
         source = entry.get('source_collection', 'semantic_analysis')
         res = entry.get('analysis_result', {})
-        full_username = entry.get('username', '')
+        full_username = entry.get('username', '') # Ej: MG-G1-t1-2025-1
         
-        # --- NUEVA LÓGICA DE JERARQUÍA ROBUSTA ---
-        # Ejemplo: MG-G1-2025-1-t1
+        # --- LÓGICA DE JERARQUÍA REPARADA ---
         parts = full_username.split('-')
         
-        if len(parts) >= 5:
-            # El tesista es SIEMPRE el último elemento (t1)
-            id_estudiante = parts[-1] 
-            # El grupo es todo lo anterior unido de nuevo (MG-G1-2025-1)
-            id_grupo = "-".join(parts[:-1]) 
-            
-            # Formato para Martha: "Grupo G1 (2025-1)"
-            # parts[1] es G1, parts[2] es 2025, parts[3] es 1
-            display_grupo = f"Grupo {parts[1]} ({parts[2]}-{parts[3]})"
-        else:
-            id_grupo = entry.get('group_id', 'Sin Grupo')
-            id_estudiante = full_username
+        # Buscamos cuál de las partes es el tesista (t1, t2, etc.)
+        id_estudiante = "SN"
+        grupo_parts = []
+        
+        for p in parts:
+            if re.match(r'^t\d+$', p.lower()): # Si la parte es t1, t2...
+                id_estudiante = p
+            else:
+                grupo_parts.append(p)
+        
+        # El ID del Grupo es todo lo que NO es el tesista
+        # Resultado esperado: MG-G1-2025-1
+        id_grupo = "-".join(grupo_parts)
+        
+        # Nombre amigable para el eje X de las gráficas de Martha
+        # Si parts tiene el formato esperado, extraemos G1 y el periodo
+        try:
+            display_grupo = f"Grupo {parts[1]} ({parts[-2]}-{parts[-1]})"
+        except:
             display_grupo = id_grupo
 
-        # --- NORMALIZACIÓN DE MÉTRICAS Y FECHAS ---
+        # --- NORMALIZACIÓN DE DATOS ---
         ts = entry.get('timestamp') or datetime.now(timezone.utc)
         if isinstance(ts, str):
             try: ts = datetime.fromisoformat(ts.replace('Z', '+00:00'))
@@ -44,26 +47,21 @@ def process_semantic_data(raw_data):
         if source == 'chat_history-v3':
             m1 = float(entry.get('metadata', {}).get('chat_coherence', m1))
 
-        # Extraer M2 (Robustez) con fallback
-        m2 = 0.0
-        if isinstance(res, dict):
-            m2 = res.get('m2_score') or res.get('concept_graph', {}).get('M2_density', 0.0)
-        
         processed.append({
-            'Estudiante_ID': id_estudiante,      # Muestra: t1
-            'Username_Completo': full_username,  # Muestra: MG-G1-2025-1-t1
-            'Grupo_ID': id_grupo,                # Muestra: MG-G1-2025-1
-            'Grupo_Display': display_grupo,      # Muestra: Grupo G1 (2025-1)
+            'Estudiante_ID': id_estudiante,      # Solo "t1" o "t2"
+            'Username_Completo': full_username,  # El ID largo
+            'Grupo_ID': id_grupo,                # MG-G1-2025-1
+            'Grupo_Display': display_grupo,      # Grupo G1 (2025-1)
             'Fuente': source,
             'Fecha': ts,
             'M1': m1,
-            'M2': float(m2 or 0.0),
+            'M2': float(res.get('m2_score') or res.get('concept_graph', {}).get('M2_density', 0.0)),
             'Texto': entry.get('text', '')
         })
     
     df = pd.DataFrame(processed)
     
-    # Cálculo de Coherencia Dialógica M1-D
+    # Cálculo de M1-D (Coherencia Dialógica)
     if not df.empty:
         df['M1_D'] = df.groupby('Username_Completo')['M1'].transform('mean')
         varianza = df.groupby('Username_Completo')['M1'].transform('std').fillna(0)
