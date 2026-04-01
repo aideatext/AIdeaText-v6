@@ -53,4 +53,4 @@ def process_semantic_data(raw_data):
         # IMPORTANTE: Esto es lo que permite que Martha vea a todos en una sola gráfica
         df['M1_D'] = df.groupby('Username_Completo')['M1'].transform('mean')
     
-    return df.sort_values('Fecha')update 
+    return df.sort_values('Fecha') 
