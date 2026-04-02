@@ -87,54 +87,38 @@ def get_chat_history(username: str = None, group_id: str = None, analysis_type: 
         return []
 
 ##############################################
-def store_chat_history(username: str, group_id: str, messages: list, analysis_type: str = 'sidebar', metadata: dict = None) -> bool:
-    """
-    Guarda el historial del chat vinculándolo a un usuario y a su grupo.
-    """
+
+def store_chat_history(username, group_id, messages, analysis_type, metadata=None):
     try:
         collection = get_collection(COLLECTION_NAME)
-        if collection is None:
-            logger.error("No se pudo obtener la colección de chat")
-            return False
-            
-        # Limpiar y formatear cada mensaje
+        
         formatted_messages = []
         for msg in messages:
-            try:
-                formatted_messages.append({
-                    'role': msg.get('role', 'unknown'),
-                    'content': clean_text_content(msg.get('content', '')),
-                    'timestamp': datetime.now(timezone.utc)
-                })
-            except Exception as msg_error:
-                logger.error(f"Error procesando mensaje para almacenar: {str(msg_error)}")
-                continue
+            # Aseguramos que el timestamp sea consistente
+            ts = msg.get('timestamp')
+            if isinstance(ts, datetime):
+                ts_str = ts.strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                ts_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+
+            formatted_messages.append({
+                'role': msg.get('role', 'unknown'),
+                'content': clean_text_content(msg.get('content', '')),
+                'timestamp': ts_str # Guardamos como string para el UI
+            })
         
-        # Ahora group_id ya está definido porque entra como parámetro
         chat_document = {
             'username': username,
             'group_id': group_id,  
-            'timestamp': datetime.now(timezone.utc),
+            'timestamp': datetime.now(timezone.utc), # Meta-timestamp de la sesión
             'messages': formatted_messages,
             'analysis_type': analysis_type,
+            'visual_graph': metadata.get('visual_graph') if metadata else None, # Nuevo campo
             'metadata': metadata or {}
         }
         
-        # Verificación de seguridad UTF-8
-        try:
-            import json
-            json.dumps(chat_document, ensure_ascii=False)
-        except UnicodeEncodeError as e:
-            logger.error(f"Error de codificación en documento: {str(e)}")
-            return False
-        
         result = collection.insert_one(chat_document)
-        if result.inserted_id:
-            logger.info(f"Chat guardado para {username} en grupo {group_id}")
-            return True
-            
-        return False
-        
+        return True if result.inserted_id else False
     except Exception as e:
         logger.error(f"Error al guardar historial: {str(e)}")
         return False
