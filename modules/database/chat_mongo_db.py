@@ -42,7 +42,7 @@ def clean_text_content(text: str) -> str:
 #######################################################################
 def get_chat_history(username: str = None, group_id: str = None, analysis_type: str = 'sidebar', limit: int = None) -> list:
     try:
-        # Ahora permite buscar por GRUPO o por USUARIO
+        # 1. Configuración de la consulta
         query = {
             "$or": [{"analysis_type": analysis_type}, {"analysis_type": None}]
         }
@@ -53,37 +53,49 @@ def get_chat_history(username: str = None, group_id: str = None, analysis_type: 
 
         collection = get_collection(COLLECTION_NAME)
         cursor = collection.find(query).sort("timestamp", -1)
+        
         if limit:
             cursor = cursor.limit(limit)
             
         conversations = []
         for chat in cursor:
             try:
-                # Limpiar y asegurar UTF-8 en cada mensaje
+                # 2. Recuperar el timestamp principal del documento
+                # Si no existe, usamos la hora actual para evitar el error 'timestamp'
+                chat_ts = chat.get('timestamp', datetime.now(timezone.utc))
+                
                 cleaned_messages = []
                 for msg in chat.get('messages', []):
                     try:
+                        # Aseguramos que cada mensaje tenga un rol y contenido
                         cleaned_messages.append({
                             'role': msg.get('role', 'unknown'),
-                            'content': clean_text_content(msg.get('content', ''))
+                            'content': clean_text_content(msg.get('content', '')),
+                            # Si el mensaje no tiene timestamp interno, hereda el del chat
+                            'timestamp': msg.get('timestamp', chat_ts)
                         })
                     except Exception as msg_error:
-                        logger.error(f"Error procesando mensaje: {str(msg_error)}")
+                        logger.error(f"Error procesando mensaje individual: {str(msg_error)}")
                         continue
                 
+                # 3. Construir el objeto de conversación incluyendo el grafo visual
                 conversations.append({
-                    'timestamp': chat['timestamp'],
-                    'messages': cleaned_messages
+                    'timestamp': chat_ts,
+                    'messages': cleaned_messages,
+                    'analysis_type': chat.get('analysis_type'),
+                    'visual_graph': chat.get('visual_graph'), # <--- IMPORTANTE: Recuperamos el grafo
+                    'username': chat.get('username'),
+                    'group_id': chat.get('group_id')
                 })
                 
             except Exception as e:
-                logger.error(f"Error formateando chat: {str(e)}")
+                logger.error(f"Error formateando documento de chat: {str(e)}")
                 continue
                 
         return conversations
         
     except Exception as e:
-        logger.error(f"Error al recuperar historial de chat: {str(e)}")
+        logger.error(f"Error general al recuperar historial de chat: {str(e)}")
         return []
 
 ##############################################

@@ -2,14 +2,14 @@
 
 import streamlit as st
 import logging
-from ..chatbot import display_sidebar_chat
-from ..studentact.student_activities_v2 import display_student_activities
 from session_state import logout
 
 # --- IMPORTACIONES DE INTERFACES DE ANÁLISIS ---
 from ..semantic.semantic_live_interface import display_semantic_live_interface
 from ..semantic.semantic_interface import display_semantic_interface
 from ..discourse.discourse_interface import display_discourse_interface
+from ..studentact.student_activities_v2 import display_student_activities
+from ..chatbot import display_sidebar_chat
 
 # --- IMPORTACIONES DE BASE DE DATOS (SQL para feedback) ---
 from ..database.sql_db import store_student_feedback
@@ -50,7 +50,7 @@ def user_page(username, lang_code, t):
         t.get('semantic_live_tab', 'Análisis Rápido'),      # TAB 0
         t.get('semantic_tab', 'Análisis Semántico'),       # TAB 1
         t.get('discourse_tab', 'Análisis Comparado'),      # TAB 2
-        t.get('activities_tab', 'Historial de Chat'),      # TAB 3 (Solo Chats)
+        t.get('activities_tab', 'Mi Historial Completo'),  # <--- CAMBIADO (TAB 3)
         t.get('feedback_tab', 'Feedback')                  # TAB 4
     ]
     
@@ -74,8 +74,8 @@ def user_page(username, lang_code, t):
 
     # --- TAB 3: Registro de Actividades (SOLO CHATS) ---
     with tabs[3]:
-        st.subheader(t.get('chat_history_title', 'Tu historial con el Tutor Virtual'))
-        # La función se llama igual, pero internamente solo procesará los chats
+        st.subheader(t.get('chat_history_title', 'Registro Histórico de Actividades'))
+        # Esta función cargará las 4 sub-pestañas internas (Live, Semántico, Comparado, Chat)
         display_student_activities(username, lang_code, t)
 
     # --- TAB 4: Formulario de Feedback ---
