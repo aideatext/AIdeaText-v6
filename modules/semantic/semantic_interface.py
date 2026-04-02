@@ -66,13 +66,14 @@ def display_semantic_interface(lang_code, nlp_models, semantic_t):
                         
                         # --- ALINEACIÓN CON LA JERARQUÍA ---
                         # Recuperamos el ID de grupo (class_id es el que usas en el login)
-                        current_group = st.session_state.get('class_id')
+                        # Extraer el group_id de la sesión (igual que en las otras interfaces)
+                        group_id = st.session_state.get('group_id', 'GENERAL')
                         
-                        if current_group:
+                        if group_id:
                             # GUARDADO AUTOMÁTICO (Evita el problema del botón que desaparece)
                             storage_success = store_student_semantic_result(
                                 username=st.session_state.username,
-                                group_id=current_group,             
+                                group_id=group_id,             
                                 text=text_content,                  
                                 analysis_result=result['analysis'], 
                                 lang_code=lang_code,                # <-- NUEVO

@@ -20,7 +20,7 @@ from ..database.semantic_mongo_live_db import store_student_semantic_live_result
 
 from ..database.chat_mongo_db import store_chat_history, get_chat_history
 
-def display_semantic_live_interface(group_id, lang_code, nlp_models, semantic_t):
+def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
     """
     Interfaz para el análisis semántico en vivo con proporciones de columna ajustadas
     """
@@ -90,6 +90,9 @@ def display_semantic_live_interface(group_id, lang_code, nlp_models, semantic_t)
                             st.session_state.semantic_live_state['analysis_count'] += 1
                             st.session_state.semantic_live_state['text_changed'] = False
                             
+                            # Extraer el group_id de la sesión (igual que en las otras interfaces)
+                            group_id = st.session_state.get('group_id', 'GENERAL')
+
                             # USAR PARÁMETROS NOMBRADOS (Llamada Normalizada)
                             store_result = store_student_semantic_live_result(
                                 username=st.session_state.username,

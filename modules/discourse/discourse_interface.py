@@ -95,7 +95,7 @@ def display_discourse_interface(lang_code, nlp_models, discourse_t):
                         # Guardar en base de datos (Llamada Normalizada)
                         if store_student_discourse_result(
                             username=st.session_state.username,
-                            group_id=st.session_state.get('class_id', 'GENERAL'),
+                            group_id=st.session_state.get('group_id', 'GENERAL'),
                             text1=text1,
                             text2=text2,
                             analysis_result=result,
