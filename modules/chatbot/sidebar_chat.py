@@ -156,5 +156,3 @@ def generate_hybrid_graph_bytes(user_text, tutor_text, nlp):
     plt.savefig(buf, format='png', bbox_inches='tight', dpi=100)
     plt.close()
     return buf.getvalue()
-
-
