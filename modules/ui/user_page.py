@@ -29,7 +29,7 @@ def user_page(username, lang_code, t):
     # --- BARRA LATERAL (SIDEBAR) ---
     with st.sidebar:
         try:
-            st.image("assets/logo_aideatext.png", width=250) 
+            st.image("assets/img/logo_92x92.png", width=250) 
         except:
             st.title("📚 AIdeaText")
         

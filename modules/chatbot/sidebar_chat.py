@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 def display_sidebar_chat(lang_code: str, chatbot_t: dict):
     """Chatbot con motor de métricas M1/M2 integrado"""
+    # --- VALIDACIÓN ANTICRASHEO ---
+    if not isinstance(chatbot_t, dict):
+        logger.error(f"chatbot_t no es dict, es {type(chatbot_t)}. Usando fallback.")
+        chatbot_t = {} 
+    # ------------------------------
     with st.sidebar:
         st.markdown("""<style>.chat-container { max-height: 60vh; overflow-y: auto; padding: 10px; }</style>""", unsafe_allow_html=True)
 
