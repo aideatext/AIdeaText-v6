@@ -5,11 +5,13 @@ import logging
 from session_state import logout
 
 # --- IMPORTACIONES DE INTERFACES DE ANÁLISIS ---
-from ..semantic.semantic_live_interface import display_semantic_live_interface
-from ..semantic.semantic_interface import display_semantic_interface
-from ..discourse.discourse_interface import display_discourse_interface
-from ..studentact.student_activities_v2 import display_student_activities
-from ..chatbot import display_sidebar_chat
+from modules.semantic.semantic_live_interface import display_semantic_live_interface
+from modules.semantic.semantic_interface import display_semantic_interface
+from modules.discourse.discourse_interface import display_discourse_interface
+from modules.studentact.student_activities_v2 import display_student_activities
+from modules.chatbot import display_sidebar_chat
+
+from modules.utils.spacy_utils import load_spacy_models
 
 # --- IMPORTACIONES DE BASE DE DATOS (SQL para feedback) ---
 from ..database.sql_db import store_student_feedback
@@ -17,14 +19,35 @@ from ..database.sql_db import store_student_feedback
 logger = logging.getLogger(__name__)
 
 def user_page(username, lang_code, t):
-    """
-    Página principal del usuario (Estudiante).
-    TAB 3 ahora se limita exclusivamente al historial de Chats con el Tutor.
-    """
-    logger.info(f"Renderizando User Page para: {username}")
+    # 1. Carga persistente de modelos spaCy
+    if 'nlp_models' not in st.session_state:
+        with st.spinner(t.get('loading_models', 'Cargando modelos de lenguaje...')):
+            try:
+                st.session_state['nlp_models'] = load_spacy_models()
+                logger.info("Modelos de spaCy cargados exitosamente en la sesión.")
+            except Exception as e:
+                logger.error(f"Error al cargar modelos spaCy: {e}")
+                st.error("Error crítico: No se pudieron cargar los modelos de lenguaje.")
+                return
+
+    # Recuperar para uso local en las pestañas
+    nlp_models = st.session_state['nlp_models']
+
+    # --- PUENTE DE CONTEXTO PARA EL TUTOR ---
+    # Esto soluciona el mensaje "Contexto semántico no configurado"
+    # Buscamos si hay un análisis previo (ya sea de la pestaña Live o Documentos)
     
-    # Recuperar modelos NLP cargados en la sesión
-    nlp_models = st.session_state.get('nlp_models')
+    # 1. Intentar recuperar de la interfaz Live (la más común)
+    if 'semantic_live_state' in st.session_state:
+        last_res = st.session_state.semantic_live_state.get('last_result')
+        if last_res:
+            st.session_state['last_analysis'] = last_res
+
+    # 2. Si no, intentar recuperar de la interfaz de Documentos
+    elif 'semantic_state' in st.session_state:
+        last_res = st.session_state.semantic_state.get('last_analysis')
+        if last_res:
+            st.session_state['last_analysis'] = last_res
 
     # --- BARRA LATERAL (SIDEBAR) ---
     with st.sidebar:
