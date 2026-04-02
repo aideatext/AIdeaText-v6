@@ -144,24 +144,19 @@ def display_semantic_interface(lang_code, nlp_models, semantic_t):
                 semantic_t
             )
             
-            # --- BOTÓN PARA ACTIVAR EL AGENTE VIRTUAL (NUEVA POSICIÓN CORRECTA) ---
-            if st.button("💬 Consultar con Asistente"):
-                if 'semantic_result' not in st.session_state:
-                    st.error("Primero complete el análisis semántico")
-                    return
-                    
-                # Guardar TODOS los datos necesarios
+            # --- ACTIVACIÓN AUTOMÁTICA DEL AGENTE VIRTUAL ---
+            # El contexto viaja al sidebar en tiempo real, sin botones adicionales.
+            if 'semantic_result' in st.session_state and st.session_state.semantic_result:
                 st.session_state.semantic_agent_data = {
-                    'text': st.session_state.semantic_state['text_content'],  # Texto completo
-                    'metrics': st.session_state.semantic_result['analysis'],  # Métricas
+                    'text': st.session_state.semantic_state.get('text_content', ''),
+                    'metrics': st.session_state.semantic_result['analysis'],
                     'graph_data': st.session_state.semantic_result['analysis'].get('concept_graph')
                 }
                 st.session_state.semantic_agent_active = True
-                st.rerun()
             
-            # Mostrar notificación si el agente está activo
+            # Mostrar notificación elegante de que el agente está escuchando
             if st.session_state.get('semantic_agent_active', False):
-                st.success(semantic_t.get('semantic_agent_ready_message', 'El agente virtual está listo. Abre el chat en la barra lateral.'))
+                st.success(semantic_t.get('semantic_agent_ready_message', '🤖 ¡Contexto sincronizado! El Tutor Virtual está listo en el panel lateral para discutir este análisis.'))
                 
         else:
             st.info(semantic_t.get('upload_prompt', 'Cargue un archivo para comenzar el análisis'))
@@ -169,7 +164,6 @@ def display_semantic_interface(lang_code, nlp_models, semantic_t):
     except Exception as e:
         logger.error(f"Error general en interfaz semántica: {str(e)}")
         st.error(semantic_t.get('general_error', "Se produjo un error. Por favor, intente de nuevo."))
-
 
 #######################################
 
