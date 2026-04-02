@@ -89,37 +89,36 @@ def get_chat_history(username: str = None, group_id: str = None, analysis_type: 
 
 ##############################################
 
-def store_chat_history(username, group_id, messages, analysis_type, metadata=None):
+def store_chat_history(username, group_id, messages, analysis_type, metadata=None, lang_code='es'):
+    """
+    Guarda el historial del chat.
+    Incluimos lang_code para la normalización del Tutor.
+    """
     try:
         collection = get_collection(COLLECTION_NAME)
-        
-        formatted_messages = []
-        for msg in messages:
-            # Aseguramos que el timestamp sea consistente
-            ts = msg.get('timestamp')
-            if isinstance(ts, datetime):
-                ts_str = ts.strftime("%Y-%m-%d %H:%M:%S")
-            else:
-                ts_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
-            formatted_messages.append({
-                'role': msg.get('role', 'unknown'),
-                'content': clean_text_content(msg.get('content', '')),
-                'timestamp': ts_str # Guardamos como string para el UI
-            })
-        
+        # 4. Preparar el documento normalizado para chat_mongo_db.py        
         chat_document = {
+            'group_id': group_id,
             'username': username,
-            'group_id': group_id,  
-            'timestamp': datetime.now(timezone.utc), # Meta-timestamp de la sesión
-            'messages': formatted_messages,
-            'analysis_type': analysis_type,
-            'visual_graph': metadata.get('visual_graph') if metadata else None, # Nuevo campo
+            'timestamp': datetime.now(timezone.utc),
+            'analysis_type': analysis_type,  # Aquí se guardará 'chat_interaction'
+            'is_latest': True,
+            'language': lang_code,
+            'messages': messages,
+            # Evitamos redundancia: si ya está en metadata, lo extraemos aquí para fácil acceso
+            'visual_graph': metadata.get('visual_graph') if metadata else None,
             'metadata': metadata or {}
         }
-        
+
+        # Actualizar is_latest
+        collection.update_many(
+            {'group_id': group_id, 'username': username, 'is_latest': True},
+            {'$set': {'is_latest': False}}
+        )
+
         result = collection.insert_one(chat_document)
-        return True if result.inserted_id else False
+        return bool(result.inserted_id)
     except Exception as e:
-        logger.error(f"Error al guardar historial: {str(e)}")
+        logger.error(f"Error en store_chat_history: {e}")
         return False

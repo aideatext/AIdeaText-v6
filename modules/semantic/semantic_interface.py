@@ -52,63 +52,46 @@ def display_semantic_interface(lang_code, nlp_models, semantic_t):
         )
 
         # 2.1 Verificar si hay un archivo cargado y un análisis pendiente
-        
         if uploaded_file is not None and st.session_state.semantic_state.get('pending_analysis', False):
-        
             try:
                 with st.spinner(semantic_t.get('processing', 'Processing...')):
-                    # Realizar análisis
                     text_content = uploaded_file.getvalue().decode('utf-8')
-                    st.session_state.semantic_state['text_content'] = text_content  # <-- Guardar el texto
+                    st.session_state.semantic_state['text_content'] = text_content
                     
-                    analysis_result = process_semantic_input(
-                        text_content, 
-                        lang_code,
-                        nlp_models,
-                        semantic_t
-                    )
+                    result = process_semantic_input(text_content, lang_code, nlp_models, semantic_t)
                     
-                    if analysis_result['success']:
-                        # Guardar resultado
-                        st.session_state.semantic_result = analysis_result
+                    if result['success']:
+                        st.session_state.semantic_result = result
                         st.session_state.semantic_state['analysis_count'] += 1
-                        st.session_state.semantic_state['current_file'] = uploaded_file.name
-
-                        # Preparar datos para MongoDB
-                        analysis_data = {
-                            'key_concepts': analysis_result['analysis'].get('key_concepts', []),
-                            'concept_centrality': analysis_result['analysis'].get('concept_centrality', {}),
-                            'concept_graph': analysis_result['analysis'].get('concept_graph')
-                        }
                         
-                        # Reemplaza el bloque de 'Guardar en base de datos' con esto:
-                        if st.button(semantic_t.get('btn_save', 'Guardar Análisis')):
-                            with st.spinner(semantic_t.get('spn_saving', 'Guardando...')):
-                                # Reordenamos y aseguramos que 'analysis_result' sea el diccionario
-                                storage_success = store_student_semantic_result(
-                                    username=st.session_state.username,
-                                    text=text_content,                             # El texto primero
-                                    analysis_result=analysis_result['analysis'],   # El diccionario segundo
-                                    group_id=st.session_state.get('group_id', 'default') # El grupo al final
+                        # --- ALINEACIÓN CON LA JERARQUÍA ---
+                        # Recuperamos el ID de grupo (class_id es el que usas en el login)
+                        current_group = st.session_state.get('class_id')
+                        
+                        if current_group:
+                            # GUARDADO AUTOMÁTICO (Evita el problema del botón que desaparece)
+                            storage_success = store_student_semantic_result(
+                                username=st.session_state.username,
+                                group_id=current_group,             
+                                text=text_content,                  
+                                analysis_result=result['analysis'], 
+                                lang_code=lang_code,                # <-- NUEVO
+                                file_name=uploaded_file.name        # <-- NUEVO
                                 )
-                        
-                        if storage_success:
-                            st.success(
-                                semantic_t.get('analysis_complete', 
-                                'Análisis completado y guardado. Para realizar un nuevo análisis, cargue otro archivo.')
-                            )
+                            
+                            if storage_success:
+                                st.success(semantic_t.get('analysis_complete', 'Análisis guardado exitosamente.'))
                         else:
-                            st.error(semantic_t.get('error_message', 'Error saving analysis'))
+                            st.error("Error: No se encontró un grupo (class_id) activo para este usuario.")
                     else:
-                        st.error(analysis_result['message'])
-                    
-                # Restablecer el flag de análisis pendiente
+                        st.error(result.get('message', 'Error en el análisis'))
+
+                # Importante: Resetear el flag al final del proceso
                 st.session_state.semantic_state['pending_analysis'] = False
-                    
+                st.rerun() # Forzamos recarga para mostrar el gráfico guardado
+
             except Exception as e:
                 logger.error(f"Error en análisis semántico: {str(e)}")
-                st.error(semantic_t.get('error_processing', f'Error processing text: {str(e)}'))
-                # Restablecer el flag de análisis pendiente en caso de error
                 st.session_state.semantic_state['pending_analysis'] = False
 
         # 3. Columnas para los botones y mensajes

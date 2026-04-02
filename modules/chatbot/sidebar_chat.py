@@ -93,11 +93,12 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                             # Guardar en Mongo (con el metadata del grafo)
                             store_chat_history(
                                 username=st.session_state.username,
-                                group_id=st.session_state.get('group_id', 'default'),
+                                group_id=st.session_state.get('class_id', 'default'), # Asegúrate que sea class_id o group_id según tu estándar
                                 messages=st.session_state.sidebar_messages,
-                                analysis_type='semantic_interaction',
+                                analysis_type='chat_interaction', # <--- VALOR NORMALIZADO
+                                lang_code=lang_code,               # <--- PASAMOS EL IDIOMA
                                 metadata={
-                                    'visual_graph': graph_png, # <--- El grafo ahora sí se guarda
+                                    'visual_graph': graph_png, 
                                     'text_sample': user_input[:200]
                                 }
                             )
