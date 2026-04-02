@@ -42,60 +42,49 @@ def clean_text_content(text: str) -> str:
 #######################################################################
 def get_chat_history(username: str = None, group_id: str = None, analysis_type: str = 'sidebar', limit: int = None) -> list:
     try:
-        # 1. Configuración de la consulta
-        query = {
-            "$or": [{"analysis_type": analysis_type}, {"analysis_type": None}]
-        }
-        if group_id:
-            query["group_id"] = group_id
-        else:
-            query["username"] = username
-
         collection = get_collection(COLLECTION_NAME)
+        # Búsqueda flexible
+        query = {"$or": [{"analysis_type": analysis_type}, {"analysis_type": None}]}
+        if group_id: query["group_id"] = group_id
+        else: query["username"] = username
+
         cursor = collection.find(query).sort("timestamp", -1)
-        
-        if limit:
-            cursor = cursor.limit(limit)
+        if limit: cursor = cursor.limit(limit)
             
         conversations = []
         for chat in cursor:
             try:
-                # 2. Recuperar el timestamp principal del documento
-                # Si no existe, usamos la hora actual para evitar el error 'timestamp'
-                chat_ts = chat.get('timestamp', datetime.now(timezone.utc))
+                # 1. Asegurar timestamp del documento
+                doc_ts = chat.get('timestamp')
+                if not doc_ts:
+                    doc_ts = datetime.now(timezone.utc)
                 
+                # 2. Limpiar mensajes y asegurar que tengan timestamp
                 cleaned_messages = []
                 for msg in chat.get('messages', []):
-                    try:
-                        # Aseguramos que cada mensaje tenga un rol y contenido
-                        cleaned_messages.append({
-                            'role': msg.get('role', 'unknown'),
-                            'content': clean_text_content(msg.get('content', '')),
-                            # Si el mensaje no tiene timestamp interno, hereda el del chat
-                            'timestamp': msg.get('timestamp', chat_ts)
-                        })
-                    except Exception as msg_error:
-                        logger.error(f"Error procesando mensaje individual: {str(msg_error)}")
-                        continue
+                    msg_ts = msg.get('timestamp', doc_ts)
+                    # Forzar a string para Streamlit
+                    if isinstance(msg_ts, datetime):
+                        msg_ts = msg_ts.strftime("%Y-%m-%d %H:%M:%S")
+                    
+                    cleaned_messages.append({
+                        'role': msg.get('role', 'unknown'),
+                        'content': clean_text_content(str(msg.get('content', ''))),
+                        'timestamp': msg_ts
+                    })
                 
-                # 3. Construir el objeto de conversación incluyendo el grafo visual
                 conversations.append({
-                    'timestamp': chat_ts,
+                    'timestamp': doc_ts,
                     'messages': cleaned_messages,
-                    'analysis_type': chat.get('analysis_type'),
-                    'visual_graph': chat.get('visual_graph'), # <--- IMPORTANTE: Recuperamos el grafo
-                    'username': chat.get('username'),
-                    'group_id': chat.get('group_id')
+                    'visual_graph': chat.get('visual_graph'), # Aquí recuperamos el grafo del chat
+                    'analysis_type': chat.get('analysis_type')
                 })
-                
             except Exception as e:
-                logger.error(f"Error formateando documento de chat: {str(e)}")
+                logger.error(f"Fallo en documento individual: {e}")
                 continue
-                
         return conversations
-        
     except Exception as e:
-        logger.error(f"Error general al recuperar historial de chat: {str(e)}")
+        logger.error(f"Error crítico en recuperación: {e}")
         return []
 
 ##############################################
