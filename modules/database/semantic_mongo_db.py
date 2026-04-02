@@ -25,13 +25,13 @@ logger = logging.getLogger(__name__)
 COLLECTION_NAME = 'student_semantic_analysis'
 
 ###################################################
-def store_student_semantic_result(username, group_id, text, analysis_result, lang_code='en'):
+def store_student_semantic_result(username, group_id, text, analysis_result, lang_code='es', file_name="archivo_sin_nombre"):
     """
-    Guarda el análisis semántico (archivos) vinculándolo al GRUPO.
-    Mantiene la compresión de imagen para evitar errores de tamaño (413).
+    Guarda el análisis semántico vinculado al GRUPO.
+    Se eliminan las dependencias externas para evitar advertencias de VS Code.
     """
     try:
-        # 1. Validación de datos mínimos (ahora incluye group_id)
+        # 1. Validación de datos mínimos
         if not all([username, group_id, text, analysis_result]):
             logger.error(f"Datos insuficientes para guardar el análisis (Grupo: {group_id})")
             return False
@@ -40,7 +40,7 @@ def store_student_semantic_result(username, group_id, text, analysis_result, lan
         if collection is None:
             return False
 
-        # 2. Procesamiento Único del Gráfico (TU LÓGICA PRESERVADA)
+        # 2. Procesamiento y Compresión del Gráfico
         concept_graph_data = analysis_result.get('concept_graph')
         final_graph_bytes = None
 
@@ -51,55 +51,47 @@ def store_student_semantic_result(username, group_id, text, analysis_result, lan
                 else:
                     final_graph_bytes = concept_graph_data
 
-                # --- COMPRESIÓN PARA EVITAR ERROR 413 ---
+                # Compresión para evitar error 413 (Payload Too Large)
                 img = Image.open(io.BytesIO(final_graph_bytes))
                 if img.mode != 'RGB':
                     img = img.convert('RGB')
                 
                 output = io.BytesIO()
-                # Calidad 75% reduce el peso sin perder claridad
                 img.save(output, format="JPEG", quality=75, optimize=True)
                 final_graph_bytes = output.getvalue()
                 
-                logger.info(f"Grafo optimizado: {len(final_graph_bytes)} bytes")
             except Exception as e:
-                logger.warning(f"Error procesando gráfico, se intentará guardar original: {str(e)}")
-                if not final_graph_bytes and isinstance(concept_graph_data, bytes):
+                logger.warning(f"Error optimizando gráfico: {str(e)}")
+                if isinstance(concept_graph_data, bytes):
                     final_graph_bytes = concept_graph_data
 
-        # 3. Gestión de 'Buzón para el Tutor' (is_latest)
-        # Marcamos análisis anteriores del grupo como no-recientes
-        try:
-            collection.update_many(
-                {'group_id': group_id, 'is_latest': True},
-                {'$set': {'is_latest': False}}
-            )
-        except Exception as e:
-            logger.warning(f"No se pudo actualizar is_latest anteriores: {e}")
+        # 3. Gestión de Jerarquía (is_latest)
+        collection.update_many(
+            {'group_id': group_id, 'username': username, 'is_latest': True},
+            {'$set': {'is_latest': False}}
+        )
 
-        # 4. Preparar el documento (Estructura para Equipos)
+        # 4. Preparar el documento normalizado para semantic_mongo_db.py
         analysis_document = {
-            'group_id': group_id,       # <--- NUEVO: Identificador de equipo
-            'username': username,       # Quién subió/analizó
+            'group_id': group_id,
+            'username': username,
             'timestamp': datetime.now(timezone.utc),
-            'text': text[:50000], 
-            'language': lang_code,
-            'is_latest': True,          # <--- NUEVO: Indica al Tutor cuál es el archivo activo
             'analysis_type': 'standard_semantic',
-            'key_concepts': analysis_result.get('key_concepts', []),
-            'entities': analysis_result.get('entities', []),
-            'concept_graph': final_graph_bytes 
+            'is_latest': True,
+            'language': lang_code,  # Usamos el parámetro pasado, no st.session_state
+            'text': text[:50000], 
+            'concept_graph': final_graph_bytes,
+            'metadata': {
+                'file_name': file_name 
+            }
         }
 
         # 5. Inserción
         result = collection.insert_one(analysis_document)
-        if result.inserted_id:
-            logger.info(f"Análisis de archivo guardado para grupo {group_id}. ID: {result.inserted_id}")
-            return True
-        return False
+        return bool(result.inserted_id)
 
     except Exception as e:
-        logger.error(f"Error inesperado en store_student_semantic_result: {str(e)}", exc_info=True)
+        logger.error(f"Error en store_student_semantic_result: {str(e)}", exc_info=True)
         return False
 
 ####################################################################################

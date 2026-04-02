@@ -92,12 +92,14 @@ def display_discourse_interface(lang_code, nlp_models, discourse_t):
                             uploaded_file2.name
                         )
 
-                        # Guardar en base de datos
+                        # Guardar en base de datos (Llamada Normalizada)
                         if store_student_discourse_result(
-                            st.session_state.username,
-                            text1,
-                            text2,
-                            result
+                            username=st.session_state.username,
+                            group_id=st.session_state.get('class_id', 'GENERAL'),
+                            text1=text1,
+                            text2=text2,
+                            analysis_result=result,
+                            lang_code=lang_code
                         ):
                             st.success(discourse_t.get('success_message', 'Análisis guardado correctamente'))
                             

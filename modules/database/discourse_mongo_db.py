@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 COLLECTION_NAME = 'student_discourse_analysis'
 
 ########################################################################
-def store_student_discourse_result(username, text1, text2, analysis_result, group_id=None):
+def store_student_discourse_result(username, group_id, text1, text2, analysis_result, lang_code='es'):    
     """
     Guarda el resultado del análisis de discurso en MongoDB vinculado al grupo.
     """
@@ -22,21 +22,29 @@ def store_student_discourse_result(username, text1, text2, analysis_result, grou
         collection = get_collection(COLLECTION_NAME)
         if collection is None: return False
 
-        # Si no viene group_id, intentamos sacarlo del session_state (opcional)
-        import streamlit as st
-        gid = group_id or st.session_state.get('class_id') or 'GENERAL'
-
+        # 4. Preparar el documento normalizado para discourse_mongo_db.py
         document = {
+            'group_id': group_id,               # Estandarizado (antes era gid)
             'username': username,
-            'group_id': gid,
             'timestamp': datetime.now(timezone.utc),
-            'text1': text1,
-            'text2': text2,
+            'analysis_type': 'discourse_comparison',
+            'is_latest': True,
+            'language': lang_code,
+            'text1': text1,                     # Texto A
+            'text2': text2,                     # Texto B
             'key_concepts1': analysis_result.get('key_concepts1', []),
             'key_concepts2': analysis_result.get('key_concepts2', []),
-            'metrics': analysis_result.get('metrics', {})
+            'graph1': analysis_result.get('graph1'), # Grafo del Texto 1
+            'graph2': analysis_result.get('graph2'), # Grafo del Texto 2
+            'metrics': analysis_result.get('metrics', {}) # Datos de comparación
         }
-        
+
+        # Marcar anteriores como no-recientes
+        collection.update_many(
+            {'group_id': group_id, 'username': username, 'is_latest': True},
+            {'$set': {'is_latest': False}}
+        )
+
         # Codificar gráficos a base64
         for graph_key in ['graph1', 'graph2', 'combined_graph']:
             if graph_key in analysis_result and analysis_result[graph_key] is not None:

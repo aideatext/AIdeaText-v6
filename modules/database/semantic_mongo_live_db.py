@@ -43,16 +43,18 @@ def store_student_semantic_live_result(username, group_id, text, analysis_result
         # Extraemos el grafo (el corazón de la retroalimentación del tutor)
         graph_b64 = analysis_result.get('concept_graph')
 
-        # Estructura del documento "Buzón para el Tutor"
+       # 4. Preparar el documento normalizado para semantic_mongo_live_db.py
         document = {
-            'group_id': group_id,      # Clave de búsqueda para el equipo
-            'username': username,      # Último editor
-            'text': text,              # El texto actual del cuadro
-            'lang_code': lang_code,
-            'key_concepts': analysis_result.get('key_concepts', []),
-            'concept_graph': graph_b64,
+            'group_id': group_id,
+            'username': username,
             'timestamp': datetime.now(timezone.utc),
-            'status': 'active'
+            'analysis_type': 'live_semantic',
+            'is_latest': True,                  # Para que el tutor sepa que es lo que el alumno escribe "ahora"
+            'language': lang_code,
+            'text': text,                       # Contenido del text_area en vivo
+            'key_concepts': analysis_result.get('key_concepts', []),
+            'concept_graph': graph_b64,         # Grafo generado del texto en vivo
+            'status': 'active'                  # Metadato adicional de sesión
         }
 
         # LA MAGIA: update_one con upsert=True
