@@ -42,6 +42,7 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                         st.session_state.chat_processor.set_semantic_context(
                             text=semantic_data['text'],
                             metrics=semantic_data['metrics'],
+                            graph_data=semantic_data.get('graph_data'),
                             lang_code=lang_code
                         )
                         semantic_ready = True
@@ -79,7 +80,8 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                     if 'username' in st.session_state:
                         try:
                             # Importamos la función que definimos antes
-                            from ..text_analysis.semantic_analysis import generate_hybrid_graph_bytes
+                            # from ..text_analysis.semantic_analysis import generate_hybrid_graph_bytes
+                            
                             # Recuperamos el modelo NLP que cargaste en el arranque de la app
                             nlp_model = st.session_state.get('nlp_models', {}).get(lang_code)
                             

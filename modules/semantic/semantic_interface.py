@@ -81,12 +81,12 @@ def display_semantic_interface(lang_code, nlp_models, semantic_t):
                             'concept_graph': analysis_result['analysis'].get('concept_graph')
                         }
                         
-                        # Guardar en base de datos
+                        # Reemplaza el bloque de 'Guardar en base de datos' con esto:
                         storage_success = store_student_semantic_result(
-                            st.session_state.username,
-                            text_content,
-                            analysis_result['analysis'],
-                            lang_code  # Pasamos el código de idioma directamente
+                            username=st.session_state.username,
+                            group_id=st.session_state.get('group_id', 'default'), # <- Faltaba esto
+                            text=text_content,
+                            analysis_result=analysis_result['analysis']
                         )
                         
                         if storage_success:
