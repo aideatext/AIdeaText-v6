@@ -1,6 +1,7 @@
 import streamlit as st
 import logging
 from PIL import Image
+
 from translations import get_translations
 from modules.ui.user_page import user_page
 from modules.admin.admin_ui import admin_page  # Importamos Admin
