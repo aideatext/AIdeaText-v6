@@ -94,7 +94,7 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
                             store_result = store_student_semantic_live_result(
                                     username=st.session_state.username,
                                     text=text_input,
-                                    analysis_data=analysis_result['analysis'], # Aquí estaba el cruce
+                                    analysis_result=analysis_result['analysis'], # Aquí estaba el cruce
                                     lang_code=lang_code
                                 )
                             

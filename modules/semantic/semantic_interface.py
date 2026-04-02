@@ -86,9 +86,9 @@ def display_semantic_interface(lang_code, nlp_models, semantic_t):
                             with st.spinner(semantic_t.get('spn_saving', 'Guardando...')):
                                 storage_success = store_student_semantic_result(
                                     username=st.session_state.username,
-                                    group_id=st.session_state.get('group_id', 'default'), # <- Faltaba esto
                                     text=text_content,
                                     analysis_result=analysis_result['analysis']
+                                    group_id=st.session_state.get('group_id', 'default'), # <- Faltaba esto                                       
                                 )
                         
                         if storage_success:
