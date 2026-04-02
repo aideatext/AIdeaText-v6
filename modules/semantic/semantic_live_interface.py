@@ -92,11 +92,11 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
                             
                             # USAR PARÁMETROS NOMBRADOS PARA EVITAR EL ERROR DE 'STR' OBJECT
                             store_result = store_student_semantic_live_result(
-                                    username=st.session_state.username,
-                                    text=text_input,
-                                    analysis_result=analysis_result['analysis'], # Aquí estaba el cruce
-                                    lang_code=lang_code
-                                )
+                                username=st.session_state.username,
+                                text=text_input,
+                                analysis_result=analysis_result['analysis'], # CAMBIADO: de 'analysis_data' a 'analysis_result'
+                                lang_code=lang_code
+)
                             
                             if not store_result:
                                 st.error(semantic_t.get('error_saving', 'Error al guardar el análisis'))

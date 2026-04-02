@@ -84,11 +84,12 @@ def display_semantic_interface(lang_code, nlp_models, semantic_t):
                         # Reemplaza el bloque de 'Guardar en base de datos' con esto:
                         if st.button(semantic_t.get('btn_save', 'Guardar Análisis')):
                             with st.spinner(semantic_t.get('spn_saving', 'Guardando...')):
+                                # Reordenamos y aseguramos que 'analysis_result' sea el diccionario
                                 storage_success = store_student_semantic_result(
                                     username=st.session_state.username,
-                                    text=text_content,
-                                    analysis_result=analysis_result['analysis']
-                                    group_id=st.session_state.get('group_id', 'default'), # <- Faltaba esto                                       
+                                    text=text_content,                             # El texto primero
+                                    analysis_result=analysis_result['analysis'],   # El diccionario segundo
+                                    group_id=st.session_state.get('group_id', 'default') # El grupo al final
                                 )
                         
                         if storage_success:
