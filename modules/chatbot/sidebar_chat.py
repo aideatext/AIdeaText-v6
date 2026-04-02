@@ -3,10 +3,16 @@
 import streamlit as st
 from .chat_process import ChatProcessor
 from ..database.chat_mongo_db import store_chat_history
+
 # Estas son las que necesitan el __init__.py
 from ..metrics.m1_m2 import calculate_M1, interpret_M1  # <--- AÑADIR
 from ..text_analysis.semantic_analysis import create_concept_graph # <--- AÑADIR
 import logging
+
+#Importaciones para grafos 
+import io
+import networkx as nx
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 
@@ -144,13 +150,26 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                                 )
                 
                         if 'username' in st.session_state:
+                            # Obtenemos el NLP del estado o lo cargamos
+                            from ..text_analysis.semantic_analysis import nlp 
+                            
+                            # 1. Generamos el grafo de la interacción actual
+                            user_input = prompt # El último mensaje del usuario
+                            try:
+                                graph_png = generate_hybrid_graph_bytes(user_input, full_response, nlp)
+                            except Exception as e:
+                                logger.error(f"Error visual: {e}")
+                                graph_png = None
+
+                            # 2. Guardamos todo en Mongo
                             store_chat_history(
                                 username=st.session_state.username,
+                                group_id=st.session_state.get('group_id', 'default'),
                                 messages=st.session_state.sidebar_messages,
-                                analysis_type='semantic_analysis',
+                                analysis_type='semantic_interaction',
                                 metadata={
-                                    'text_sample': st.session_state.semantic_agent_data['text'][:500],
-                                    'concepts': st.session_state.semantic_agent_data['metrics']['key_concepts'][:5]
+                                    'visual_graph': graph_png,
+                                    'text_sample': user_input[:200]
                                 }
                             )
                             
@@ -170,3 +189,39 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
         except Exception as e:
             logger.error(f"Error fatal en sidebar_chat: {str(e)}", exc_info=True)
             st.error("System error. Please refresh the page.")
+
+# Nueva función 
+def generate_hybrid_graph_bytes(user_text, tutor_text, nlp):
+    """Genera la imagen del grafo con estilo Azul/Verde/Oro"""
+    plt.figure(figsize=(6, 4))
+    G = nx.Graph()
+    
+    # Extraer conceptos de ambos
+    def get_c(t): return {tok.lemma_.lower(): tok.text for tok in nlp(t) 
+                          if tok.pos_ in ['NOUN', 'PROPN'] and not tok.is_stop}
+    
+    c_u = get_c(user_text)
+    c_t = get_c(tutor_text)
+    all_l = set(c_u.keys()) | set(c_t.keys())
+    
+    for l in all_l:
+        if l in c_u and l in c_t: color = "#FFD700" # Oro
+        elif l in c_u: color = "#87CEFA" # Azul
+        else: color = "#90EE90" # Verde
+        G.add_node(l, label=c_u.get(l, c_t.get(l)), color=color)
+    
+    # Aristas (co-ocurrencia básica)
+    nodes = list(G.nodes())
+    for i in range(len(nodes)-1): G.add_edge(nodes[i], nodes[i+1])
+    
+    pos = nx.spring_layout(G)
+    colors = [G.nodes[n]['color'] for n in G.nodes]
+    nx.draw(G, pos, with_labels=True, labels=nx.get_node_attributes(G, 'label'),
+            node_color=colors, node_size=600, font_size=7, edge_color='#EEEEEE')
+    
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png', bbox_inches='tight')
+    plt.close()
+    return buf.getvalue()
+
+
