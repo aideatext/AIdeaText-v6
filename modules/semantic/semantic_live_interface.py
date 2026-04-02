@@ -90,20 +90,20 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
                             st.session_state.semantic_live_state['analysis_count'] += 1
                             st.session_state.semantic_live_state['text_changed'] = False
                             
-                            # Guardar en la colección live
+                            # USAR PARÁMETROS NOMBRADOS PARA EVITAR EL ERROR DE 'STR' OBJECT
                             store_result = store_student_semantic_live_result(
-                                st.session_state.username,
-                                text_input,
-                                analysis_result['analysis'],
-                                lang_code
-                            )
+                                    username=st.session_state.username,
+                                    text=text_input,
+                                    analysis_data=analysis_result['analysis'], # Aquí estaba el cruce
+                                    lang_code=lang_code
+                                )
                             
                             if not store_result:
                                 st.error(semantic_t.get('error_saving', 'Error al guardar el análisis'))
                             else:
                                 st.success(semantic_t.get('analysis_saved', 'Análisis guardado correctamente'))
                         else:
-                            st.error(analysis_result.get('message', 'Error en el análisis'))
+                           st.error(analysis_result.get('message', 'Error en el análisis'))
 
                 except Exception as e:
                     logger.error(f"Error en análisis: {str(e)}")
