@@ -17,17 +17,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Importaciones locales
-from .semantic_process import (
+from modules.semantic.semantic_process import (
     process_semantic_input,
     format_semantic_results
 )
 
-from ..utils.widget_utils import generate_unique_key
-from ..database.semantic_mongo_db import store_student_semantic_result
-from ..database.chat_mongo_db import store_chat_history, get_chat_history
+from modules.utils.widget_utils import generate_unique_key
+from modules.database.semantic_mongo_db import store_student_semantic_result
+from modules.database.chat_mongo_db import store_chat_history, get_chat_history
 
-from ..semantic.semantic_agent_interaction import display_semantic_chat
-from ..chatbot.sidebar_chat import display_sidebar_chat
+from modules.semantic.semantic_agent_interaction import display_semantic_chat
+from modules.chatbot.sidebar_chat import display_sidebar_chat
 
 # from ..database.semantic_export import export_user_interactions
 
