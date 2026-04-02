@@ -31,6 +31,15 @@ def store_student_semantic_result(username, group_id, text, analysis_result, lan
     Se eliminan las dependencias externas para evitar advertencias de VS Code.
     """
     try:
+        # --- AÑADE ESTA VALIDACIÓN DE SEGURIDAD ---
+        if isinstance(analysis_result, str):
+            import json
+            try:
+                analysis_result = json.loads(analysis_result)
+            except:
+                logger.error("analysis_result llegó como string y no es JSON válido")
+                return False
+        # ------------------------------------------
         # 1. Validación de datos mínimos
         if not all([username, group_id, text, analysis_result]):
             logger.error(f"Datos insuficientes para guardar el análisis (Grupo: {group_id})")

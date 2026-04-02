@@ -58,7 +58,7 @@ def user_page(username, lang_code, t):
         
         st.divider()
         st.subheader(t.get('tutor_title', 'Tutor Virtual'))
-        display_sidebar_chat(username, lang_code)
+        display_sidebar_chat(lang_code, t.get('chatbot', {}))
         
         st.divider()
         if st.button(t.get('logout', 'Cerrar Sesión'), key="logout_btn"):
