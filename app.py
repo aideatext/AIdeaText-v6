@@ -20,11 +20,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"  # Para dar más espacio al logo
 )
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Asegurar que el directorio raíz y la carpeta modules sean visibles
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
 # Importaciones locales
-from translations import get_translations, get_landing_translations
 from session_state import initialize_session_state
+from translations import get_translations, get_landing_translations
 
 from modules.ui.ui import main as ui_main
 
