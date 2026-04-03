@@ -64,7 +64,12 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                             grafo_bytes, g_interaccion = generate_hybrid_graph_and_object(texto_u, texto_a, nlp_model)
                             
                             # Recuperamos el grafo de la tesis/texto base (G1)
-                            g_tesis = st.session_state.get('semantic_agent_data', {}).get('graph_object')
+                            # semantic_process.py guarda el grafo bajo 'metrics'.'concept_graph_nx'
+                            g_tesis = (
+                                st.session_state.get('semantic_agent_data', {})
+                                .get('metrics', {})
+                                .get('concept_graph_nx')
+                            )
                             
                             # Calculamos M1 (Coherencia Transmodal) y M2 (Robustez)
                             m1_val = calculate_M1(g_tesis, g_interaccion) if g_tesis else 0.0
@@ -134,7 +139,7 @@ def generate_hybrid_graph_and_object(user_text, tutor_text, nlp):
             node_size=800, font_size=8, font_weight='bold', edge_color='#DDDDDD')
 
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight', dpi=120, transparent=True)
+    fig.savefig(buf, format='png', bbox_inches='tight', dpi=120, transparent=True)
     plt.close(fig)
     
     return buf.getvalue(), G

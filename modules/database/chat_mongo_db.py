@@ -40,11 +40,14 @@ def clean_text_content(text: str) -> str:
     return text
 
 #######################################################################
-def get_chat_history(username: str = None, group_id: str = None, analysis_type: str = 'sidebar', limit: int = None) -> list:
+def get_chat_history(username: str = None, group_id: str = None, analysis_type: str = None, limit: int = None) -> list:
     try:
         collection = get_collection(COLLECTION_NAME)
-        # Búsqueda flexible
-        query = {"$or": [{"analysis_type": analysis_type}, {"analysis_type": None}]}
+        # Si no se especifica tipo, devuelve todos los registros del usuario/grupo
+        if analysis_type:
+            query = {"$or": [{"analysis_type": analysis_type}, {"analysis_type": None}]}
+        else:
+            query = {}
         if group_id: query["group_id"] = group_id
         else: query["username"] = username
 
@@ -75,9 +78,12 @@ def get_chat_history(username: str = None, group_id: str = None, analysis_type: 
                 
                 conversations.append({
                     'timestamp': doc_ts,
+                    'username': chat.get('username'),
+                    'group_id': chat.get('group_id'),
                     'messages': cleaned_messages,
-                    'visual_graph': chat.get('visual_graph'), # Aquí recuperamos el grafo del chat
-                    'analysis_type': chat.get('analysis_type')
+                    'visual_graph': chat.get('visual_graph'),
+                    'analysis_type': chat.get('analysis_type'),
+                    'metadata': chat.get('metadata', {}),
                 })
             except Exception as e:
                 logger.error(f"Fallo en documento individual: {e}")

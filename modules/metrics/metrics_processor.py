@@ -54,7 +54,16 @@ def process_semantic_data(raw_data):
     df = pd.DataFrame(processed)
     
     if not df.empty:
-        # Agrupamos por el ID completo del estudiante para su promedio individual
-        df['M1_D'] = df.groupby('Username_Completo')['M1'].transform('mean')
-    
+        # M1_D intra-escritura: fórmula canónica con penalización por std
+        # mean(M1) × (1 - 0.15 × std(M1)) — misma fórmula que MetricsService.calculate_m1d
+        def _m1d_writing(series):
+            active = series[series > 0.0]
+            if active.empty:
+                return 0.0
+            mean_val = float(np.mean(active))
+            std_val = float(np.std(active)) if len(active) > 1 else 0.0
+            return round(float(np.clip(mean_val * (1 - 0.15 * std_val), 0.0, 1.0)), 4)
+
+        df['M1_D'] = df.groupby('Username_Completo')['M1'].transform(_m1d_writing)
+
     return df.sort_values('Fecha')
