@@ -219,7 +219,7 @@ def display_semantic_results(semantic_result, lang_code, semantic_t):
             # Sección del gráfico (sin div contenedor)
             st.image(
                 analysis['concept_graph'],
-                use_container_width=True
+                width='stretch'
             )
 
             # --- SOLO ESTE BLOQUE ES NUEVO ---

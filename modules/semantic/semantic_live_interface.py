@@ -189,7 +189,7 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
                         if 'concept_graph' in analysis and analysis['concept_graph'] is not None:
                             st.image(
                                 analysis['concept_graph'],
-                                use_container_width=True
+                                width='stretch'
                             )
 
                         # Controles en dos columnas

@@ -201,7 +201,7 @@ def display_discourse_results(result, lang_code, discourse_t):
             )
             
             if 'graph1' in result and result['graph1']:
-                st.image(result['graph1'], use_container_width=True)
+                st.image(result['graph1'], width='stretch')
 
     # Documento 2
     with col2:
@@ -222,7 +222,7 @@ def display_discourse_results(result, lang_code, discourse_t):
             )
             
             if 'graph2' in result and result['graph2']:
-                st.image(result['graph2'], use_container_width=True)
+                st.image(result['graph2'], width='stretch')
 
     # Sección unificada de interpretación (como semantic_interface)
     st.markdown("""
