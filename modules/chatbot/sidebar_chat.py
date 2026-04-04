@@ -72,7 +72,7 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                             )
                             
                             # Calculamos M1 (Coherencia Transmodal) y M2 (Robustez)
-                            m1_val = calculate_M1(g_tesis, g_interaccion) if g_tesis else 0.0
+                            m1_val = calculate_M1(g_tesis, g_interaccion, nlp_model) if g_tesis else 0.0
                             m2_data = calculate_M2(g_interaccion)
                             
                             # Guardamos en Mongo con la estructura que espera metrics_processor.py
@@ -85,7 +85,7 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                                     'visual_graph': grafo_bytes,
                                     'm1_score': m1_val,
                                     'm2_score': m2_data.get('M2_density', 0.0),
-                                    'avg_degree': m2_data.get('M2_avg_degree', 0.0)
+                                    'avg_degree': m2_data.get('M2_average_degree', 0.0)
                                 },
                                 lang_code=lang_code
                             )
