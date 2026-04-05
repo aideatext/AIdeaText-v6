@@ -12,30 +12,45 @@ from ..metrics.m1_m2 import calculate_M1, calculate_M2, interpret_M1
 logger = logging.getLogger(__name__)
 
 
+# ─── Entry point llamado desde user_page.py ──────────────────────────────────
+
 def display_sidebar_chat(lang_code: str, chatbot_t: dict):
     """
-    Chatbot con motor de métricas M1/M2.
-    El cálculo, visualización y guardado ocurren cuando el estudiante
-    presiona explícitamente el botón 'Guardar punto de revisión'.
+    Tutor Virtual en el sidebar.
+    - El contexto semántico se aplica automáticamente cuando el estudiante analiza.
+    - El cálculo M1/M2 y el guardado ocurren solo al presionar 'Guardar punto de revisión'.
     """
     if not isinstance(chatbot_t, dict):
         logger.error(f"chatbot_t no es dict, es {type(chatbot_t)}. Usando fallback.")
         chatbot_t = {}
 
     with st.sidebar:
-        st.markdown("""<style>.chat-container { max-height: 60vh; overflow-y: auto; padding: 10px; }</style>""",
-                    unsafe_allow_html=True)
+        st.markdown(
+            "<style>.chat-container{max-height:60vh;overflow-y:auto;padding:10px;}</style>",
+            unsafe_allow_html=True,
+        )
 
         try:
-            # 1. Inicialización
+            # 1. Inicializar procesador
             if 'chat_processor' not in st.session_state:
                 st.session_state.chat_processor = ChatProcessor()
 
+            # 2. Sincronizar contexto semántico con el ChatProcessor
+            #    Se hace en cada rerun para capturar el análisis más reciente.
+            #    Solo resetea la conversación cuando el texto analizado cambia.
+            _sync_semantic_context(lang_code)
+
+            # 3. Inicializar historial
             if 'sidebar_messages' not in st.session_state:
-                initial_msg = {'en': "Hello!", 'es': "¡Hola!", 'pt': "Olá!", 'fr': "Bonjour!"}.get(lang_code, "Hola!")
+                initial_msg = {
+                    'en': "Hello! I'm ready to discuss your analysis.",
+                    'es': "¡Hola! Estoy listo para discutir tu análisis.",
+                    'pt': "Olá! Estou pronto para discutir sua análise.",
+                    'fr': "Bonjour! Je suis prêt à discuter de votre analyse.",
+                }.get(lang_code, "¡Hola!")
                 st.session_state.sidebar_messages = [{"role": "assistant", "content": initial_msg}]
 
-            # 2. Renderizado del Chat
+            # 4. Chat UI
             with st.expander("💬 " + chatbot_t.get('assistant_title', "Asistente"), expanded=True):
                 chat_container = st.container()
                 with chat_container:
@@ -53,20 +68,21 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                     # B. Respuesta del asistente (streaming)
                     with chat_container:
                         with st.chat_message("assistant"):
-                            response_stream = st.session_state.chat_processor.process_chat_input(user_input, lang_code)
+                            response_stream = st.session_state.chat_processor.process_chat_input(
+                                user_input, lang_code
+                            )
                             full_response = st.write_stream(response_stream)
 
-                    st.session_state.sidebar_messages.append({"role": "assistant", "content": full_response})
-                    # Marcar que hay conversación nueva sin guardar
+                    st.session_state.sidebar_messages.append(
+                        {"role": "assistant", "content": full_response}
+                    )
                     st.session_state['chat_has_unsaved'] = True
                     st.rerun()
 
-            # 3. BOTÓN DE PUNTO DE REVISIÓN
-            # Solo visible cuando hay al menos un intercambio real (más del saludo inicial)
+            # 5. Botón de punto de revisión (visible tras el primer turno real)
             n_user_msgs = sum(1 for m in st.session_state.sidebar_messages if m["role"] == "user")
 
             if n_user_msgs > 0:
-                # Indicador visual de estado
                 if st.session_state.get('chat_has_unsaved', False):
                     st.caption(chatbot_t.get('unsaved_hint', "💬 Conversación activa — aún no guardada"))
 
@@ -78,31 +94,74 @@ def display_sidebar_chat(lang_code: str, chatbot_t: dict):
                 ):
                     _compute_and_save_checkpoint(lang_code, chatbot_t)
 
-                # Mostrar último checkpoint guardado (si existe)
+                # Mostrar último checkpoint
                 if st.session_state.get('last_checkpoint'):
                     _display_checkpoint_result(st.session_state['last_checkpoint'], chatbot_t)
 
-            # 4. Botón de reinicio
+            # 6. Botón reiniciar
             if st.button("🔄 " + chatbot_t.get('reset_chat', "Reiniciar"), key="btn_reset_chat"):
                 st.session_state.sidebar_messages = []
                 st.session_state.pop('last_checkpoint', None)
                 st.session_state.pop('chat_has_unsaved', None)
+                # Limpiar contexto del processor para forzar resincronización
+                st.session_state.chat_processor.semantic_context = None
                 st.rerun()
 
         except Exception as e:
-            logger.error(f"Error fatal en sidebar_chat: {e}")
+            logger.error(f"Error fatal en sidebar_chat: {e}", exc_info=True)
 
 
-# ─── Lógica del checkpoint ────────────────────────────────────────────────────
+# ─── Sincronización de contexto ───────────────────────────────────────────────
+
+def _sync_semantic_context(lang_code: str):
+    """
+    Aplica semantic_agent_data al ChatProcessor cuando hay un análisis activo.
+    Solo resetea la conversación si el texto analizado cambió (nuevo análisis).
+    """
+    agent_data = st.session_state.get('semantic_agent_data')
+    processor = st.session_state.chat_processor
+
+    if not agent_data:
+        return  # Sin análisis aún — el processor sigue con semantic_context=None
+
+    new_text = agent_data.get('text', '')
+    current_full_text = (processor.semantic_context or {}).get('full_text', '')
+
+    if new_text and new_text != current_full_text:
+        # Texto nuevo → actualizar contexto (resetea conversación interna del processor)
+        try:
+            processor.set_semantic_context(
+                text=new_text,
+                metrics=agent_data.get('metrics', {}),
+                graph_data=agent_data.get('graph_data'),
+                lang_code=lang_code,
+            )
+            # Resetear también el historial visible en la UI
+            initial_msg = {
+                'en': "Hello! I've received your analysis. What would you like to explore?",
+                'es': "¡Hola! Recibí tu análisis. ¿Qué quieres explorar?",
+                'pt': "Olá! Recebi sua análise. O que gostaria de explorar?",
+                'fr': "Bonjour! J'ai reçu votre analyse. Que souhaitez-vous explorer?",
+            }.get(lang_code, "¡Hola! Recibí tu análisis.")
+            st.session_state.sidebar_messages = [{"role": "assistant", "content": initial_msg}]
+            st.session_state.pop('last_checkpoint', None)
+            st.session_state.pop('chat_has_unsaved', None)
+            logger.info("[sidebar] Contexto semántico sincronizado con nuevo análisis.")
+        except Exception as e:
+            logger.error(f"[sidebar] Error sincronizando contexto: {e}")
+
+
+# ─── Checkpoint: cálculo + visualización + guardado ──────────────────────────
 
 def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
     """
-    Calcula M1/M2, genera el grafo híbrido, muestra resultados y guarda en MongoDB.
-    Se llama solo cuando el estudiante presiona el botón.
+    Calcula M1/M2 sobre la conversación completa, genera el grafo híbrido
+    con el pipeline NLP correcto, y guarda en MongoDB.
+    Solo se ejecuta cuando el estudiante presiona el botón.
     """
     nlp_model = st.session_state.get('nlp_models', {}).get(lang_code)
     if not nlp_model:
-        st.warning(chatbot_t.get('nlp_not_ready', "Modelo de lenguaje no disponible aún."))
+        st.warning(chatbot_t.get('nlp_not_ready', "Modelo de lenguaje no disponible."))
         return
 
     messages = st.session_state.sidebar_messages
@@ -115,8 +174,10 @@ def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
 
     with st.spinner(chatbot_t.get('computing_checkpoint', "Calculando métricas...")):
         try:
-            # Grafo híbrido de la interacción (estudiante + tutor)
-            grafo_bytes, g_interaccion = generate_hybrid_graph_and_object(texto_u, texto_a, nlp_model)
+            # Grafo híbrido con pipeline NLP completo
+            grafo_bytes, g_interaccion = generate_hybrid_graph_and_object(
+                texto_u, texto_a, nlp_model, lang_code
+            )
 
             # Grafo de referencia del texto analizado (G_Escrito)
             g_tesis = (
@@ -128,7 +189,7 @@ def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
             # Métricas
             m1_val = calculate_M1(g_tesis, g_interaccion, nlp_model) if g_tesis else None
             m2_data = calculate_M2(g_interaccion)
-            m1_interpretation = interpret_M1(m1_val if m1_val is not None else 0.0)
+            m1_interp = interpret_M1(m1_val if m1_val is not None else 0.0)
 
             # Guardar en MongoDB
             store_chat_history(
@@ -145,51 +206,54 @@ def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
                 lang_code=lang_code,
             )
 
-            # Guardar en session_state para mostrar sin recalcular
             st.session_state['last_checkpoint'] = {
                 'grafo_bytes': grafo_bytes,
                 'm1_val': m1_val,
                 'm2_data': m2_data,
-                'm1_interpretation': m1_interpretation,
+                'm1_interp': m1_interp,
                 'n_turns': sum(1 for m in messages if m["role"] == "user"),
                 'g_tesis_available': g_tesis is not None,
             }
             st.session_state['chat_has_unsaved'] = False
 
-            logger.info(f"[checkpoint] M1={m1_val} M2={m2_data.get('M2_density')} turns={st.session_state['last_checkpoint']['n_turns']}")
+            logger.info(
+                f"[checkpoint] M1={m1_val} M2={m2_data.get('M2_density')} "
+                f"turns={st.session_state['last_checkpoint']['n_turns']}"
+            )
             st.rerun()
 
         except Exception as e:
-            logger.error(f"Error en checkpoint: {e}")
+            logger.error(f"Error en checkpoint: {e}", exc_info=True)
             st.error(chatbot_t.get('checkpoint_error', f"Error al guardar: {e}"))
 
 
 def _display_checkpoint_result(cp: dict, chatbot_t: dict):
-    """Muestra el resultado del último checkpoint guardado."""
+    """Muestra el resultado del último checkpoint guardado en el sidebar."""
     st.markdown("---")
     st.markdown(f"**{chatbot_t.get('checkpoint_title', '📌 Último punto de revisión')}**")
 
     # Grafo híbrido
     if cp.get('grafo_bytes'):
-        st.image(cp['grafo_bytes'], use_container_width=True,
-                 caption=chatbot_t.get('graph_caption',
-                                       "🔵 Estudiante · 🟡 Compartido · 🟢 Tutor"))
+        st.image(
+            cp['grafo_bytes'],
+            width='stretch',
+            caption=chatbot_t.get('graph_caption', "🔵 Estudiante · 🟡 Compartido · 🟢 Tutor"),
+        )
 
     # M1
     m1_val = cp.get('m1_val')
-    interp = cp.get('m1_interpretation', {})
-    color_map = {'green': '🟢', 'orange': '🟡', 'red': '🔴', 'gray': '⚪'}
-    icon = color_map.get(interp.get('color', 'gray'), '⚪')
+    interp = cp.get('m1_interp', {})
+    icon_map = {'green': '🟢', 'orange': '🟡', 'red': '🔴', 'gray': '⚪'}
+    icon = icon_map.get(interp.get('color', 'gray'), '⚪')
 
     if not cp.get('g_tesis_available'):
-        st.info(chatbot_t.get('m1_no_reference',
-                              "M1: sin texto de referencia analizado aún."))
+        st.info(chatbot_t.get('m1_no_reference', "M1: analiza un texto primero para calcular coherencia."))
     else:
         m1_display = f"{m1_val:.3f}" if m1_val is not None else "—"
         st.metric(
             label=f"{icon} M1 — {interp.get('level', '')}",
             value=m1_display,
-            help=interp.get('message', '')
+            help=interp.get('message', ''),
         )
 
     # M2
@@ -198,48 +262,77 @@ def _display_checkpoint_result(cp: dict, chatbot_t: dict):
     col1.metric("M2 Densidad", f"{m2.get('M2_density', 0.0):.3f}")
     col2.metric("Grado Prom.", f"{m2.get('M2_average_degree', 0.0):.1f}")
 
-    st.caption(chatbot_t.get('checkpoint_saved',
-                             f"✅ Guardado · {cp.get('n_turns', 0)} turnos"))
+    st.caption(
+        chatbot_t.get('checkpoint_saved', f"✅ Guardado · {cp.get('n_turns', 0)} turnos")
+    )
 
 
-# ─── Generación del grafo híbrido ────────────────────────────────────────────
+# ─── Generación del grafo híbrido con pipeline NLP completo ──────────────────
 
-def generate_hybrid_graph_and_object(user_text, tutor_text, nlp):
-    """Retorna (bytes_png, nx_graph_object) del grafo híbrido estudiante-tutor."""
-    G = nx.Graph()
+def generate_hybrid_graph_and_object(
+    user_text: str, tutor_text: str, nlp, lang_code: str = 'es'
+) -> tuple:
+    """
+    Construye el grafo híbrido estudiante-tutor pasando por el pipeline
+    completo de semantic_analysis.py (limpieza POS, filtros, pesos).
 
-    def get_lemmas(text):
-        doc = nlp(text)
-        return {t.lemma_.lower(): t.text for t in doc if t.pos_ in ['NOUN', 'PROPN'] and not t.is_stop}
+    Colores:
+      🔵 #87CEFA — nodos exclusivos del estudiante
+      🟡 #FFD700 — nodos compartidos (sincronía semántica)
+      🟢 #90EE90 — nodos exclusivos del tutor
 
-    c_u = get_lemmas(user_text)
-    c_t = get_lemmas(tutor_text)
-    all_l = set(c_u.keys()) | set(c_t.keys())
+    Retorna: (bytes_png, nx.Graph)
+    """
+    from ..text_analysis.semantic_analysis import create_concept_graph
 
-    for lemma in all_l:
-        if lemma in c_u and lemma in c_t:
-            color, label = "#FFD700", c_u[lemma]   # ORO  — Sincronía
-        elif lemma in c_u:
-            color, label = "#87CEFA", c_u[lemma]   # AZUL — Estudiante
+    # Pipeline real: spaCy doc → create_concept_graph (filtros POS + pesos)
+    doc_u = nlp(user_text)
+    G_u = create_concept_graph(doc_u, lang_code)
+
+    doc_t = nlp(tutor_text)
+    G_t = create_concept_graph(doc_t, lang_code)
+
+    nodes_u = set(G_u.nodes())
+    nodes_t = set(G_t.nodes())
+
+    # Grafo híbrido: unión de nodos con color según origen
+    G_hybrid = nx.Graph()
+
+    for node in nodes_u | nodes_t:
+        if node in nodes_u and node in nodes_t:
+            color = "#FFD700"   # Compartido
+        elif node in nodes_u:
+            color = "#87CEFA"   # Solo estudiante
         else:
-            color, label = "#90EE90", c_t[lemma]   # VERDE — Tutor
-        G.add_node(lemma, label=label, color=color)
+            color = "#90EE90"   # Solo tutor
+        G_hybrid.add_node(node, color=color)
 
-    nodes = list(G.nodes())
-    if len(nodes) > 1:
-        for i in range(len(nodes) - 1):
-            G.add_edge(nodes[i], nodes[i + 1])
+    # Aristas: combinación ponderada de ambos grafos
+    for u, v, d in G_u.edges(data=True):
+        G_hybrid.add_edge(u, v, weight=d.get('weight', 1))
 
+    for u, v, d in G_t.edges(data=True):
+        if G_hybrid.has_edge(u, v):
+            G_hybrid[u][v]['weight'] = G_hybrid[u][v].get('weight', 1) + d.get('weight', 1)
+        else:
+            G_hybrid.add_edge(u, v, weight=d.get('weight', 1))
+
+    # Visualización
     fig = plt.figure(figsize=(5, 4))
-    pos = nx.spring_layout(G, k=0.5, seed=42)
-    nx.draw(G, pos,
-            labels=nx.get_node_attributes(G, 'label'),
+    if G_hybrid.number_of_nodes() > 0:
+        pos = nx.spring_layout(G_hybrid, k=0.6, seed=42)
+        node_colors = [G_hybrid.nodes[n]['color'] for n in G_hybrid.nodes()]
+        nx.draw(
+            G_hybrid, pos,
+            labels={n: n for n in G_hybrid.nodes()},
             with_labels=True,
-            node_color=[G.nodes[n]['color'] for n in G.nodes],
-            node_size=800, font_size=8, font_weight='bold', edge_color='#DDDDDD')
+            node_color=node_colors,
+            node_size=700, font_size=7, font_weight='bold',
+            edge_color='#CCCCCC', width=1.5,
+        )
 
     buf = io.BytesIO()
     fig.savefig(buf, format='png', bbox_inches='tight', dpi=120, transparent=True)
     plt.close(fig)
 
-    return buf.getvalue(), G
+    return buf.getvalue(), G_hybrid
