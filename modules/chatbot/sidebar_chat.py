@@ -176,8 +176,9 @@ def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
     with st.spinner(chatbot_t.get('computing_checkpoint', "Calculando métricas...")):
         try:
             # Grafo híbrido via AnalysisService (mismo pipeline que el análisis de tesis)
-            grafo_bytes, g_interaccion = generate_hybrid_graph_and_object(
-                texto_u, texto_a, nlp_models, lang_code
+            # Retorna: (hybrid_bytes, G_hybrid, graph_user_bytes, graph_tutor_bytes)
+            grafo_bytes, g_interaccion, graph_user_bytes, graph_tutor_bytes = (
+                generate_hybrid_graph_and_object(texto_u, texto_a, nlp_models, lang_code)
             )
 
             # Grafo de referencia del texto analizado (G_Escrito)
@@ -192,14 +193,16 @@ def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
             m2_data = calculate_M2(g_interaccion)
             m1_interp = interpret_M1(m1_val if m1_val is not None else 0.0)
 
-            # Guardar en MongoDB
+            # Guardar en MongoDB — G_hybrid + G_u + G_t para el dashboard del profesor
             store_chat_history(
                 username=st.session_state.username,
                 group_id=st.session_state.get('class_id', 'GENERAL'),
                 messages=messages,
                 analysis_type='chat_interaction',
                 metadata={
-                    'visual_graph': grafo_bytes,
+                    'visual_graph': grafo_bytes,        # G_hybrid (sincronía)
+                    'graph_user': graph_user_bytes,     # G_u solo estudiante
+                    'graph_tutor': graph_tutor_bytes,   # G_t solo tutor
                     'm1_score': float(m1_val) if m1_val is not None else 0.0,
                     'm2_score': m2_data.get('M2_density', 0.0),
                     'avg_degree': m2_data.get('M2_average_degree', 0.0),
@@ -209,6 +212,8 @@ def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
 
             st.session_state['last_checkpoint'] = {
                 'grafo_bytes': grafo_bytes,
+                'graph_user_bytes': graph_user_bytes,
+                'graph_tutor_bytes': graph_tutor_bytes,
                 'm1_val': m1_val,
                 'm2_data': m2_data,
                 'm1_interp': m1_interp,
@@ -304,10 +309,12 @@ def generate_hybrid_graph_and_object(
     # Pipeline completo para el texto del estudiante (sin persistir)
     res_u = svc.analyze_text_only(user_text, lang_code)
     G_u = res_u.get('concept_graph_nx') or nx.Graph()
+    graph_user_bytes = res_u.get('concept_graph')   # PNG del grafo del estudiante
 
     # Pipeline completo para el texto del tutor (sin persistir)
     res_t = svc.analyze_text_only(tutor_text, lang_code)
     G_t = res_t.get('concept_graph_nx') or nx.Graph()
+    graph_tutor_bytes = res_t.get('concept_graph')  # PNG del grafo del tutor
 
     nodes_u = set(G_u.nodes())
     nodes_t = set(G_t.nodes())
@@ -353,4 +360,4 @@ def generate_hybrid_graph_and_object(
     fig.savefig(buf, format='png', bbox_inches='tight', dpi=120, transparent=True)
     plt.close(fig)
 
-    return buf.getvalue(), G_hybrid
+    return buf.getvalue(), G_hybrid, graph_user_bytes, graph_tutor_bytes

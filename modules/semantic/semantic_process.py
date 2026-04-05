@@ -79,7 +79,11 @@ def process_semantic_input(text, lang_code, nlp_models, t):
             'message': t.get('success_message', 'Analysis completed successfully'),
             'analysis': {
                 'key_concepts': analysis_result['key_concepts'],
-                'concept_graph': analysis_result['concept_graph']
+                'concept_graph': analysis_result['concept_graph'],
+                # Métricas incluidas para que el store de live y discourse las use
+                'm1_score': analysis_result.get('m1_score', 0.0),
+                'm2_score': analysis_result.get('m2_score', 0.0),
+                'm2_metrics': analysis_result.get('m2_metrics', {}),
             }
         }
         
