@@ -156,10 +156,11 @@ def _sync_semantic_context(lang_code: str):
 def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
     """
     Calcula M1/M2 sobre la conversación completa, genera el grafo híbrido
-    con el pipeline NLP correcto, y guarda en MongoDB.
+    con el pipeline NLP correcto (via AnalysisService), y guarda en MongoDB.
     Solo se ejecuta cuando el estudiante presiona el botón.
     """
-    nlp_model = st.session_state.get('nlp_models', {}).get(lang_code)
+    nlp_models = st.session_state.get('nlp_models', {})
+    nlp_model = nlp_models.get(lang_code)
     if not nlp_model:
         st.warning(chatbot_t.get('nlp_not_ready', "Modelo de lenguaje no disponible."))
         return
@@ -174,9 +175,9 @@ def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
 
     with st.spinner(chatbot_t.get('computing_checkpoint', "Calculando métricas...")):
         try:
-            # Grafo híbrido con pipeline NLP completo
+            # Grafo híbrido via AnalysisService (mismo pipeline que el análisis de tesis)
             grafo_bytes, g_interaccion = generate_hybrid_graph_and_object(
-                texto_u, texto_a, nlp_model, lang_code
+                texto_u, texto_a, nlp_models, lang_code
             )
 
             # Grafo de referencia del texto analizado (G_Escrito)
@@ -267,53 +268,68 @@ def _display_checkpoint_result(cp: dict, chatbot_t: dict):
     )
 
 
-# ─── Generación del grafo híbrido con pipeline NLP completo ──────────────────
+# ─── Generación del grafo híbrido via AnalysisService ────────────────────────
 
 def generate_hybrid_graph_and_object(
-    user_text: str, tutor_text: str, nlp, lang_code: str = 'es'
+    user_text: str,
+    tutor_text: str,
+    nlp_models: dict,
+    lang_code: str = 'es',
 ) -> tuple:
     """
-    Construye el grafo híbrido estudiante-tutor pasando por el pipeline
-    completo de semantic_analysis.py (limpieza POS, filtros, pesos).
+    Construye el grafo híbrido estudiante-tutor usando AnalysisService.analyze_text_only().
 
-    Colores:
+    Garantía de investigación: MISMO pipeline NLP para todos los inputs del sistema
+    (tesis, análisis live, interacción con tutor). Misma limpieza, mismos filtros
+    POS (NOUN/PROPN), mismos pesos — las métricas M1/M2 son comparables entre sí.
+
+    Colores del grafo híbrido:
       🔵 #87CEFA — nodos exclusivos del estudiante
       🟡 #FFD700 — nodos compartidos (sincronía semántica)
       🟢 #90EE90 — nodos exclusivos del tutor
 
-    Retorna: (bytes_png, nx.Graph)
+    Args:
+        user_text:   Concatenación de todos los mensajes del estudiante
+        tutor_text:  Concatenación de todas las respuestas del tutor
+        nlp_models:  Dict {lang_code: spacy_model} de session_state
+        lang_code:   Idioma activo
+
+    Returns:
+        (bytes_png, nx.Graph) — imagen del grafo + objeto NX para calcular M1
     """
-    from ..text_analysis.semantic_analysis import create_concept_graph
+    from ..services.analysis_service import AnalysisService
 
-    # Pipeline real: spaCy doc → create_concept_graph (filtros POS + pesos)
-    doc_u = nlp(user_text)
-    G_u = create_concept_graph(doc_u, lang_code)
+    svc = AnalysisService(nlp_models=nlp_models)
 
-    doc_t = nlp(tutor_text)
-    G_t = create_concept_graph(doc_t, lang_code)
+    # Pipeline completo para el texto del estudiante (sin persistir)
+    res_u = svc.analyze_text_only(user_text, lang_code)
+    G_u = res_u.get('concept_graph_nx') or nx.Graph()
+
+    # Pipeline completo para el texto del tutor (sin persistir)
+    res_t = svc.analyze_text_only(tutor_text, lang_code)
+    G_t = res_t.get('concept_graph_nx') or nx.Graph()
 
     nodes_u = set(G_u.nodes())
     nodes_t = set(G_t.nodes())
 
-    # Grafo híbrido: unión de nodos con color según origen
+    # Grafo híbrido: unión con color según origen del concepto
     G_hybrid = nx.Graph()
 
     for node in nodes_u | nodes_t:
         if node in nodes_u and node in nodes_t:
-            color = "#FFD700"   # Compartido
+            color = "#FFD700"   # Compartido — sincronía semántica
         elif node in nodes_u:
             color = "#87CEFA"   # Solo estudiante
         else:
             color = "#90EE90"   # Solo tutor
         G_hybrid.add_node(node, color=color)
 
-    # Aristas: combinación ponderada de ambos grafos
+    # Aristas con pesos combinados
     for u, v, d in G_u.edges(data=True):
         G_hybrid.add_edge(u, v, weight=d.get('weight', 1))
-
     for u, v, d in G_t.edges(data=True):
         if G_hybrid.has_edge(u, v):
-            G_hybrid[u][v]['weight'] = G_hybrid[u][v].get('weight', 1) + d.get('weight', 1)
+            G_hybrid[u][v]['weight'] += d.get('weight', 1)
         else:
             G_hybrid.add_edge(u, v, weight=d.get('weight', 1))
 
@@ -330,6 +346,8 @@ def generate_hybrid_graph_and_object(
             node_size=700, font_size=7, font_weight='bold',
             edge_color='#CCCCCC', width=1.5,
         )
+    else:
+        fig.text(0.5, 0.5, 'Sin conceptos extraídos', ha='center', va='center', color='gray')
 
     buf = io.BytesIO()
     fig.savefig(buf, format='png', bbox_inches='tight', dpi=120, transparent=True)

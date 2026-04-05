@@ -149,6 +149,56 @@ class AnalysisService:
             logger.error(f"[AnalysisService.live] {exc}", exc_info=True)
             return self._error(str(exc))
 
+    def analyze_text_only(self, text: str, lang_code: str) -> dict:
+        """
+        Ejecuta el pipeline NLP completo (identical a run_semantic_analysis)
+        pero NO persiste en MongoDB.
+
+        Uso: análisis intermedios que no deben crear documentos propios —
+        grafo híbrido del chat, comparaciones en tiempo real, validaciones.
+
+        Garantiza que TODOS los textos del sistema (tesis, live, chat) pasen
+        por el mismo proceso: spaCy → identify_key_concepts → create_concept_graph
+        → calculate_M2. Esto es un requisito de la investigación UNIFE.
+
+        Returns:
+            {
+                'success': bool,
+                'concept_graph_nx': nx.Graph | None,
+                'concept_graph': bytes | None,   # imagen PNG
+                'key_concepts': list,
+                'm2_score': float,
+                'm2_metrics': dict,
+                'error': str | None,
+            }
+        """
+        try:
+            nlp = self._get_nlp(lang_code)
+            if nlp is None:
+                return self._error(f"Modelo spaCy no disponible para '{lang_code}'")
+
+            from modules.text_analysis.semantic_analysis import perform_semantic_analysis
+            raw = perform_semantic_analysis(text, nlp, lang_code)
+
+            if not raw.get('success'):
+                return self._error(raw.get('error', 'Error en NLP pipeline'))
+
+            m2_metrics, m2_score = self._compute_m2(raw.get('concept_graph_nx'))
+
+            return {
+                'success': True,
+                'error': None,
+                'concept_graph_nx': raw.get('concept_graph_nx'),
+                'concept_graph': raw.get('concept_graph'),
+                'key_concepts': raw.get('key_concepts', []),
+                'm2_score': m2_score,
+                'm2_metrics': m2_metrics,
+            }
+
+        except Exception as exc:
+            logger.error(f"[AnalysisService.analyze_text_only] {exc}", exc_info=True)
+            return self._error(str(exc))
+
     # ─── HELPERS PRIVADOS ─────────────────────────────────────────────────────
 
     def _get_nlp(self, lang_code: str):
