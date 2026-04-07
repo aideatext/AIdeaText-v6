@@ -21,14 +21,16 @@ def hash_password(password):
 
 ##############################################
 def verify_password(stored_password, provided_password):
-    """Verifica la contraseña contra el hash almacenado"""
+    """Verifica la contraseña contra el hash bcrypt almacenado."""
     try:
-        # Si la contraseña en DB es un hash de bcrypt
         return bcrypt.checkpw(provided_password.encode('utf-8'), stored_password.encode('utf-8'))
+    except ValueError as e:
+        # Hash malformado o truncado en DB — denegar acceso, no hacer fallback a texto plano
+        logger.error(f"Hash bcrypt inválido para usuario (salt/formato incorrecto): {e}")
+        return False
     except Exception as e:
-        logger.error(f"Error verificando password: {e}")
-        # En caso de que se haya guardado como texto plano por error durante la migración
-        return stored_password == provided_password
+        logger.error(f"Error inesperado verificando password: {e}")
+        return False
 
 ##################################################
 def authenticate_user(username, password):
@@ -77,9 +79,9 @@ def authenticate_admin(username, password):
         return user
     return None
 
-def register_student(username, password, email=None, full_name=None):
+def register_student(username, password, group_id, institution, academic_stage, faculty, full_name=None, email=None):
     hashed_pw = hash_password(password)
-    return create_student_user(username, hashed_pw, email, full_name)
+    return create_student_user(username, hashed_pw, group_id, institution, academic_stage, faculty, full_name, email)
 
 def update_student_info(username, updated_data):
     return update_student_user(username, updated_data)

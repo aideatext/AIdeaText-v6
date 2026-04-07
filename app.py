@@ -29,8 +29,6 @@ if current_dir not in sys.path:
 from session_state import initialize_session_state
 from translations import get_translations, get_landing_translations
 
-from modules.ui.ui import main as ui_main
-
 from modules.utils.spacy_utils import load_spacy_models
 from modules.utils.widget_utils import generate_unique_key
 
@@ -67,16 +65,10 @@ from modules.database.discourse_mongo_db import (
 from modules.ui.ui import main as ui_main
 from modules.auth.auth import authenticate_user
 
-
 ###########SEMANTIC
 from modules.database.semantic_mongo_db import (
     store_student_semantic_result,
     get_student_semantic_analysis
-)
-
-from modules.database.discourse_mongo_db import (
-    store_student_discourse_result,
-    get_student_discourse_analysis
 )
 
 from modules.database.chat_mongo_db import ( 

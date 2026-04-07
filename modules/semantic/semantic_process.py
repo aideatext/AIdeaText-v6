@@ -12,6 +12,7 @@ from ..text_analysis.semantic_analysis import (
     visualize_concept_graph
 )
 from ..database.semantic_mongo_db import store_student_semantic_result
+from ..metrics.m1_m2 import calculate_M2
 
 logger = logging.getLogger(__name__)
 
@@ -21,27 +22,41 @@ def process_semantic_input(text, lang_code, nlp_models, t):
     """
     try:
         logger.info(f"Iniciando análisis semántico para texto de {len(text)} caracteres")
-        
+
         # 1. Realizar el análisis semántico
         nlp = nlp_models[lang_code]
         analysis_result = perform_semantic_analysis(text, nlp, lang_code)
-        
+
         if not analysis_result['success']:
             return {
                 'success': False,
                 'message': analysis_result['error'],
                 'analysis': None
             }
-            
-        logger.info("Análisis semántico completado. Guardando resultados...")
-        
-        # 2. Guardar en base de datos
+
+        # 2. Calcular M2 si hay grafo NetworkX disponible (CRÍTICO para el dashboard)
+        graph_nx = analysis_result.get('concept_graph_nx')
+        if graph_nx is not None:
+            m2_metrics = calculate_M2(graph_nx)
+            analysis_result['m2_score'] = m2_metrics.get('M2_density', 0.0)
+            analysis_result['m2_metrics'] = m2_metrics
+        else:
+            analysis_result['m2_score'] = 0.0
+            analysis_result['m2_metrics'] = {}
+        # M1 requiere comparación con el chat — arranca en 0
+        analysis_result['m1_score'] = 0.0
+
+        logger.info(f"M2={analysis_result['m2_score']:.4f} calculado. Guardando resultados...")
+
+        # 3. Guardar en base de datos (parámetros con nombre para evitar bugs de orden)
         try:
+            group_id = st.session_state.get('class_id') or st.session_state.get('group_id', 'GENERAL')
             store_student_semantic_result(
-                st.session_state.username,
-                text,
-                analysis_result,
-                lang_code
+                username=st.session_state.username,
+                group_id=group_id,
+                text=text,
+                analysis_result=analysis_result,
+                lang_code=lang_code
             )
         except Exception as db_error:
             logger.error(f"Error al guardar en base de datos: {str(db_error)}")
@@ -64,7 +79,11 @@ def process_semantic_input(text, lang_code, nlp_models, t):
             'message': t.get('success_message', 'Analysis completed successfully'),
             'analysis': {
                 'key_concepts': analysis_result['key_concepts'],
-                'concept_graph': analysis_result['concept_graph']
+                'concept_graph': analysis_result['concept_graph'],
+                # Métricas incluidas para que el store de live y discourse las use
+                'm1_score': analysis_result.get('m1_score', 0.0),
+                'm2_score': analysis_result.get('m2_score', 0.0),
+                'm2_metrics': analysis_result.get('m2_metrics', {}),
             }
         }
         

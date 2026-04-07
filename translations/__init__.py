@@ -33,7 +33,14 @@ def get_translations(lang_code):
         **translations.get('ACTIVITIES', {}),
         **translations.get('FEEDBACK', {}),
         **translations.get('TEXT_TYPES', {}),
-        **translations.get('CURRENT_SITUATION', {})  # Añadir esta línea
+        **translations.get('CURRENT_SITUATION', {}),
+        # chatbot se expone como dict anidado (NO flat) para que
+        # t.get('chatbot', {}) retorne el dict completo al sidebar_chat
+        'chatbot': translations.get('CHATBOT', {}),
+        # sub-secciones accesibles por nombre para professor_ui y otros
+        'SEMANTIC': translations.get('SEMANTIC', {}),
+        'DISCOURSE': translations.get('DISCOURSE', {}),
+        'FEEDBACK': translations.get('FEEDBACK', {}),
     }
 
 # Nueva función para obtener traducciones específicas del landing page

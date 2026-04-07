@@ -72,7 +72,7 @@ def display_semantic_live_activities(username: str, t: dict):
                             image_to_show = base64.b64decode(graph_data)
                         
                         if image_to_show:
-                            st.image(image_to_show, caption=t.get('concept_network', 'Red de Conceptos'), use_container_width=True)
+                            st.image(image_to_show, caption=t.get('concept_network', 'Red de Conceptos'), width='stretch')
                     except Exception as img_error:
                         logger.error(f"Error procesando gráfico: {str(img_error)}")
                         st.error(t.get('error_loading_graph', 'Error al cargar el gráfico'))
@@ -167,7 +167,7 @@ def display_chat_activities(username: str, t: dict):
                     try:
                         graph_data = chat['visual_graph']
                         image_bytes = graph_data if isinstance(graph_data, bytes) else base64.b64decode(graph_data)
-                        st.image(image_bytes, use_container_width=True)
+                        st.image(image_bytes, width='stretch')
                         st.divider()
                     except Exception as e:
                         logger.error(f"Error renderizando grafo de chat: {e}")

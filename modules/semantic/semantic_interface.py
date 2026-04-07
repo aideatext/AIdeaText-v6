@@ -23,7 +23,6 @@ from modules.semantic.semantic_process import (
 )
 
 from modules.utils.widget_utils import generate_unique_key
-from modules.database.semantic_mongo_db import store_student_semantic_result
 from modules.database.chat_mongo_db import store_chat_history, get_chat_history
 
 from modules.semantic.semantic_agent_interaction import display_semantic_chat
@@ -59,31 +58,14 @@ def display_semantic_interface(lang_code, nlp_models, semantic_t):
                     st.session_state.semantic_state['text_content'] = text_content
                     
                     result = process_semantic_input(text_content, lang_code, nlp_models, semantic_t)
-                    
+
                     if result['success']:
                         st.session_state.semantic_result = result
                         st.session_state.semantic_state['analysis_count'] += 1
-                        
-                        # --- ALINEACIÓN CON LA JERARQUÍA ---
-                        # Recuperamos el ID de grupo (class_id es el que usas en el login)
-                        # Extraer el group_id de la sesión (igual que en las otras interfaces)
-                        group_id = st.session_state.get('group_id', 'GENERAL')
-                        
-                        if group_id:
-                            # GUARDADO AUTOMÁTICO (Evita el problema del botón que desaparece)
-                            storage_success = store_student_semantic_result(
-                                username=st.session_state.username,
-                                group_id=group_id,             
-                                text=text_content,                  
-                                analysis_result=result['analysis'], 
-                                lang_code=lang_code,                # <-- NUEVO
-                                file_name=uploaded_file.name        # <-- NUEVO
-                                )
-                            
-                            if storage_success:
-                                st.success(semantic_t.get('analysis_complete', 'Análisis guardado exitosamente.'))
-                        else:
-                            st.error("Error: No se encontró un grupo (class_id) activo para este usuario.")
+                        # El guardado en MongoDB (con métricas M2 correctas) ya ocurre
+                        # dentro de process_semantic_input — no repetir aquí para evitar
+                        # crear un documento duplicado con M2=0 que se convertiría en is_latest.
+                        st.success(semantic_t.get('analysis_complete', 'Análisis guardado exitosamente.'))
                     else:
                         st.error(result.get('message', 'Error en el análisis'))
 
@@ -219,7 +201,7 @@ def display_semantic_results(semantic_result, lang_code, semantic_t):
             # Sección del gráfico (sin div contenedor)
             st.image(
                 analysis['concept_graph'],
-                use_container_width=True
+                width='stretch'
             )
 
             # --- SOLO ESTE BLOQUE ES NUEVO ---

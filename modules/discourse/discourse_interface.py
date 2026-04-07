@@ -92,6 +92,20 @@ def display_discourse_interface(lang_code, nlp_models, discourse_t):
                             uploaded_file2.name
                         )
 
+                        # Activar Tutor Virtual automáticamente (igual que análisis semántico)
+                        # concept_graph_nx del primer documento es la referencia para M1
+                        st.session_state.semantic_agent_data = {
+                            'text': text1,  # Doc 1 como referencia semántica
+                            'metrics': {
+                                'key_concepts': result.get('key_concepts1', []),
+                                'concept_graph_nx': result.get('concept_graph_nx1') or result.get('concept_graph_nx'),
+                            },
+                            'graph_data': result.get('graph1'),
+                            'modality': 'discourse',
+                            'text2': text2,
+                        }
+                        st.session_state.semantic_agent_active = True
+
                         # Guardar en base de datos (Llamada Normalizada)
                         if store_student_discourse_result(
                             username=st.session_state.username,
@@ -102,7 +116,8 @@ def display_discourse_interface(lang_code, nlp_models, discourse_t):
                             lang_code=lang_code
                         ):
                             st.success(discourse_t.get('success_message', 'Análisis guardado correctamente'))
-                            
+                            st.success(discourse_t.get('semantic_agent_ready_message',
+                                                       '🤖 Tutor Virtual listo en el panel lateral.'))
                             # Mostrar resultados
                             display_discourse_results(result, lang_code, discourse_t)
                         else:
@@ -121,6 +136,9 @@ def display_discourse_interface(lang_code, nlp_models, discourse_t):
                     discourse_t.get('current_analysis_message', 'Mostrando análisis de los archivos: {} y {}')
                     .format(*st.session_state.discourse_state['current_files'])
                 )
+            if st.session_state.get('semantic_agent_active', False):
+                st.success(discourse_t.get('semantic_agent_ready_message',
+                                           '🤖 Tutor Virtual listo en el panel lateral.'))
             display_discourse_results(
                 st.session_state.discourse_result,
                 lang_code,
@@ -201,7 +219,7 @@ def display_discourse_results(result, lang_code, discourse_t):
             )
             
             if 'graph1' in result and result['graph1']:
-                st.image(result['graph1'], use_container_width=True)
+                st.image(result['graph1'], width='stretch')
 
     # Documento 2
     with col2:
@@ -222,7 +240,7 @@ def display_discourse_results(result, lang_code, discourse_t):
             )
             
             if 'graph2' in result and result['graph2']:
-                st.image(result['graph2'], use_container_width=True)
+                st.image(result['graph2'], width='stretch')
 
     # Sección unificada de interpretación (como semantic_interface)
     st.markdown("""

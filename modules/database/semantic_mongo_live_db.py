@@ -49,12 +49,23 @@ def store_student_semantic_live_result(username, group_id, text, analysis_result
             'username': username,
             'timestamp': datetime.now(timezone.utc),
             'analysis_type': 'live_semantic',
-            'is_latest': True,                  # Para que el tutor sepa que es lo que el alumno escribe "ahora"
+            'is_latest': True,
             'language': lang_code,
-            'text': text,                       # Contenido del text_area en vivo
+            'text': text,
             'key_concepts': analysis_result.get('key_concepts', []),
-            'concept_graph': graph_b64,         # Grafo generado del texto en vivo
-            'status': 'active'                  # Metadato adicional de sesión
+            'concept_graph': graph_b64,
+            'status': 'active',
+            # Métricas M2 para el dashboard del profesor (M1 se calcula en el checkpoint)
+            'm1_score': float(analysis_result.get('m1_score', 0.0)),
+            'm2_score': float(analysis_result.get('m2_score', 0.0)),
+            'analysis_result': {
+                'm1_score': float(analysis_result.get('m1_score', 0.0)),
+                'm2_score': float(analysis_result.get('m2_score', 0.0)),
+                'concept_graph': {
+                    'M2_density': float(analysis_result.get('m2_score', 0.0)),
+                    **analysis_result.get('m2_metrics', {}),
+                },
+            },
         }
 
         # LA MAGIA: update_one con upsert=True

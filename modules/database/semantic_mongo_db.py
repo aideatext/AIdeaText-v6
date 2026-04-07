@@ -81,17 +81,32 @@ def store_student_semantic_result(username, group_id, text, analysis_result, lan
         )
 
         # 4. Preparar el documento normalizado para semantic_mongo_db.py
+        # analysis_result incluye m1_score (0.0), m2_score y m2_metrics calculados en semantic_process.py
         analysis_document = {
             'group_id': group_id,
             'username': username,
             'timestamp': datetime.now(timezone.utc),
             'analysis_type': 'standard_semantic',
             'is_latest': True,
-            'language': lang_code,  # Usamos el parámetro pasado, no st.session_state
-            'text': text[:50000], 
+            'language': lang_code,
+            'text': text[:50000],
             'concept_graph': final_graph_bytes,
+            # ─── MÉTRICAS — requeridas por metrics_processor.py ───
+            'analysis_result': {
+                'm1_score': float(analysis_result.get('m1_score', 0.0)),
+                'm2_score': float(analysis_result.get('m2_score', 0.0)),
+                'concept_graph': {
+                    'M2_density': float(analysis_result.get('m2_score', 0.0)),
+                    **analysis_result.get('m2_metrics', {})
+                }
+            },
+            # campo de acceso rápido para queries de Martha sin aggregation
+            'm1_score': float(analysis_result.get('m1_score', 0.0)),
+            'm2_score': float(analysis_result.get('m2_score', 0.0)),
+            # ─────────────────────────────────────────────────────────
             'metadata': {
-                'file_name': file_name 
+                'file_name': file_name,
+                'key_concepts': analysis_result.get('key_concepts', [])
             }
         }
 

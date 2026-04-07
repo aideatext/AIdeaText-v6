@@ -189,42 +189,23 @@ def display_semantic_live_interface(lang_code, nlp_models, semantic_t):
                         if 'concept_graph' in analysis and analysis['concept_graph'] is not None:
                             st.image(
                                 analysis['concept_graph'],
+                                width='stretch'
+                            )
+
+                        # Botón de descarga
+                        if 'concept_graph' in analysis and analysis['concept_graph']:
+                            st.download_button(
+                                label="📥 " + semantic_t.get('download_graph', "Descargar"),
+                                data=analysis['concept_graph'],
+                                file_name="semantic_live_graph.png",
+                                mime="image/png",
                                 use_container_width=True
                             )
 
-                        # Controles en dos columnas
-                        col1, col2 = st.columns([1, 3])
-                        
-                        with col1:
-                            # Botón para consultar con el asistente (CORREGIDO)
-                            if st.button("💬 Consultar con Asistente", 
-                                       key="semantic_live_chat_button",
-                                       use_container_width=True):
-                                if 'last_result' not in st.session_state.semantic_live_state:
-                                    st.error("Primero complete el análisis semántico")
-                                else:
-                                    st.session_state.semantic_agent_data = {
-                                        'text': st.session_state.semantic_live_state['current_text'],
-                                        'metrics': analysis,
-                                        'graph_data': analysis.get('concept_graph')
-                                    }
-                                    st.session_state.semantic_agent_active = True
-                                    st.rerun()
-                            
-                            # Botón de descarga
-                            if 'concept_graph' in analysis:  # Verificar existencia
-                                st.download_button(
-                                    label="📥 " + semantic_t.get('download_graph', "Descargar"),
-                                    data=analysis['concept_graph'],
-                                    file_name="semantic_live_graph.png",
-                                    mime="image/png",
-                                    use_container_width=True
-                                )
-                        
-                        # Notificación si el agente está activo
+                        # Notificación automática: el tutor recibe el contexto al analizar
                         if st.session_state.get('semantic_agent_active', False):
-                            st.success(semantic_t.get('semantic_agent_ready_message', 
-                                                    'El agente virtual está listo. Abre el chat en la barra lateral.'))
+                            st.success(semantic_t.get('semantic_agent_ready_message',
+                                                    '🤖 Tutor Virtual listo en el panel lateral.'))
                         
                         with st.expander("📊 " + semantic_t.get('graph_help', "Interpretación del gráfico")):
                             st.markdown("""
