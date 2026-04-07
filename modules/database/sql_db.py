@@ -52,13 +52,16 @@ def get_user(username):
     return result[0] if result else None
 
 def get_admin_user(username):
-    return get_user(username, role='Administrador')
+    user = get_user(username)
+    return user if user and user.get('role') == 'Administrador' else None
 
 def get_student_user(username):
-    return get_user(username, role='Estudiante')
+    user = get_user(username)
+    return user if user and user.get('role') == 'Estudiante' else None
 
 def get_teacher_user(username):
-    return get_user(username, role='Profesor')
+    user = get_user(username)
+    return user if user and user.get('role') == 'Profesor' else None
 
 # --- CREACIÓN DE USUARIOS (Añadiendo group_id) ---
 def create_user_expanded(username, password, full_name, role, institution, faculty, academic_stage, class_id, pilot_id, city, country):
@@ -124,7 +127,13 @@ def create_teacher_user(username, password, institution, faculty, full_name=None
 ###############################################################
 
 def create_admin_user(username, password, additional_info=None):
-    return create_user(username, password, 'Administrador', additional_info)
+    """Crea un usuario administrador en RDS."""
+    query = """
+        INSERT INTO users (id, password, role, full_name, created_at)
+        VALUES (%s, %s, 'Administrador', %s, CURRENT_TIMESTAMP)
+    """
+    full_name = additional_info.get('full_name') if isinstance(additional_info, dict) else additional_info
+    return execute_query(query, (username, password, full_name), fetch=False)
 
 # --- GESTIÓN DE SESIONES ---
 def record_login(username):

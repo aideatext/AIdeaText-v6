@@ -1,5 +1,8 @@
 from ..text_analysis.discourse_analysis import perform_discourse_analysis, compare_semantic_analysis
 import streamlit as st
+import logging
+
+logger = logging.getLogger(__name__)
 
 def process_discourse_input(text1, text2, nlp_models, lang_code):
     """

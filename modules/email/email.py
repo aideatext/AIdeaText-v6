@@ -1,7 +1,10 @@
 import smtplib
+import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
+
+logger = logging.getLogger(__name__)
 
 def send_email_notification(name, email, institution, role, reason):
     sender_email = "noreply@aideatext.ai"  # Configura esto con tu dirección de correo

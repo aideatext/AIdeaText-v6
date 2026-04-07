@@ -79,9 +79,9 @@ def authenticate_admin(username, password):
         return user
     return None
 
-def register_student(username, password, email=None, full_name=None):
+def register_student(username, password, group_id, institution, academic_stage, faculty, full_name=None, email=None):
     hashed_pw = hash_password(password)
-    return create_student_user(username, hashed_pw, email, full_name)
+    return create_student_user(username, hashed_pw, group_id, institution, academic_stage, faculty, full_name, email)
 
 def update_student_info(username, updated_data):
     return update_student_user(username, updated_data)
