@@ -38,7 +38,7 @@ odfpy
 
 ################
 pillow
-# plotly
+plotly
 pydantic
 python-dateutil
 pandas
