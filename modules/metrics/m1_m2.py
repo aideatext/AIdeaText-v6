@@ -1,23 +1,26 @@
 # modules/metrics/m1_m2.py
 #
-# M1 — Índice de Coherencia Transmodal
-#     Similitud coseno entre el embedding del grafo escrito (Borrador/Capítulo) 
-#     y el grafo de la conversación (LO QUE INTERACTÚA CON EL TUTOR VIRTUAL).
-#     Usa los vectores de spaCy (es_core_news_md) ponderados por grado de
-#     centralidad (PageRank), enfocándose estrictamente en la red de sustantivos (CRA).
+# Implementación según Doc3_Metodo_v2 — Piloto UNIFE Abril–Junio 2025
 #
-# M2 — Índice de Robustez Estructural
-#     Densidad del grafo + grado promedio, calculados con NetworkX sobre
-#     el grafo ya construido en semantic_analysis.create_concept_graph() 
-#     (ahora filtrado solo para NOUN y PROPN).
+# M1 — Coherencia Dialógica (por sesión)
+#     Similitud coseno entre el vector semántico del grafo de escritura
+#     y el vector semántico del grafo del tutor virtual.
+#     Modelo: paraphrase-multilingual-mpnet-base-v2 (768 dimensiones).
+#     Se calcula cada vez que el estudiante usa un Tab y ha tenido
+#     al menos una sesión con el tutor virtual.
 #
-# Umbrales pedagógicos para el piloto UNIFE (según ProyPilot 2026):
-#   M1 >= 0.80    → coherencia alta      (verde)
-#   M1  0.60–0.79 → coherencia moderada  (amarillo — el asesor debe revisar)
-#   M1 < 0.60     → riesgo reproductivo  (rojo — alerta inmediata)
+# M2 — Robustez Estructural (trayectoria longitudinal)
+#     Tres métricas estructurales del grafo en cada punto de medición:
+#     - Densidad (density): aristas / (nodos × (nodos-1))
+#     - Alineación temática (topic_alignment): cos(grafo, vector_tema)
+#     - Profundidad argumentativa (depth): cadena más larga del grafo
 #
-#   M2 densidad esperada: 0.10 (abril) → 0.30 (junio)
-#   M2 grado promedio esperado: 2.0 (abril) → 5.0 (junio)
+# Umbrales M1 (Doc3_Metodo_v2, tabla de interpretación):
+#   0.80 – 1.00  → Coherencia alta
+#   0.60 – 0.79  → Coherencia moderada-alta
+#   0.40 – 0.59  → Coherencia moderada
+#   0.20 – 0.39  → Coherencia baja
+#   0.00 – 0.19  → Sin coherencia
 
 import logging
 import numpy as np
@@ -27,169 +30,383 @@ logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────
+#  CARGA DEL MODELO SENTENCE-TRANSFORMERS
+# ─────────────────────────────────────────────
+
+_model = None
+_model_load_attempted = False
+
+
+def _get_model():
+    """
+    Carga lazy (singleton) del modelo paraphrase-multilingual-mpnet-base-v2.
+    Retorna None si sentence-transformers no está instalado.
+    """
+    global _model, _model_load_attempted
+    if _model is not None:
+        return _model
+    if _model_load_attempted:
+        return None
+    _model_load_attempted = True
+    try:
+        from sentence_transformers import SentenceTransformer
+        _model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
+        logger.info("Modelo sentence-transformers cargado: paraphrase-multilingual-mpnet-base-v2 (768 dims)")
+        return _model
+    except ImportError:
+        logger.warning(
+            "sentence-transformers no instalado. "
+            "M1 y topic_alignment no estarán disponibles. "
+            "Instale con: pip install sentence-transformers"
+        )
+        return None
+    except Exception as e:
+        logger.error(f"Error cargando modelo sentence-transformers: {e}")
+        return None
+
+
+# ─────────────────────────────────────────────
 #  HELPERS INTERNOS
 # ─────────────────────────────────────────────
 
-def _graph_embedding(G: nx.Graph, nlp) -> np.ndarray | None:
+def _graph_to_text(G: nx.Graph) -> str:
     """
-    Representación vectorial del grafo como promedio ponderado de los
-    embeddings de sus nodos (Sustantivos), usando PageRank como peso.
-    Esto da más importancia a los conceptos centrales de la tesis o del diálogo.
+    Convierte un grafo de conceptos en representación textual para el modelo
+    de embeddings. Los nodos se ordenan por PageRank (centralidad) y se
+    complementan con las relaciones más fuertes del grafo.
+
+    Esto produce un texto que captura tanto los conceptos clave como
+    sus conexiones semánticas.
     """
     if not G or G.number_of_nodes() == 0:
-        return None
+        return ""
 
+    # PageRank para ponderar importancia de los conceptos
     try:
         pagerank = nx.pagerank(G, weight='weight')
     except Exception:
-        # Fallback si PageRank no converge (raro en grafos pequeños)
-        pagerank = {node: 1.0 for node in G.nodes()}
+        pagerank = {n: 1.0 for n in G.nodes()}
 
-    embeddings = []
-    weights = []
+    # Nodos ordenados por importancia (PageRank descendente)
+    sorted_nodes = sorted(pagerank.items(), key=lambda x: x[1], reverse=True)
+    concepts_text = " ".join(node for node, _ in sorted_nodes)
 
-    for node in G.nodes():
-        # Obtenemos el vector de spaCy para el concepto (sustantivo)
-        token = nlp(node)
-        if token and token.has_vector:
-            embeddings.append(token.vector)
-            weights.append(pagerank.get(node, 1.0))
+    # Relaciones más fuertes como pares de conceptos
+    sorted_edges = sorted(
+        G.edges(data=True),
+        key=lambda x: x[2].get('weight', 1),
+        reverse=True
+    )[:20]  # Top 20 relaciones
+    edges_text = " ".join(f"{u} {v}" for u, v, _ in sorted_edges)
 
-    if not embeddings:
+    return f"{concepts_text} {edges_text}".strip()
+
+
+def _encode_text(text: str) -> np.ndarray | None:
+    """Codifica texto a vector de 768 dimensiones usando sentence-transformers."""
+    model = _get_model()
+    if model is None or not text:
+        return None
+    try:
+        return model.encode(text, convert_to_numpy=True)
+    except Exception as e:
+        logger.error(f"Error codificando texto: {e}")
         return None
 
-    # Promedio ponderado
-    emb_array = np.array(embeddings)
-    w_array = np.array(weights).reshape(-1, 1)
-    weighted_sum = np.sum(emb_array * w_array, axis=0)
-    total_weight = np.sum(w_array)
 
-    return weighted_sum / total_weight if total_weight > 0 else None
-
-
-# ─────────────────────────────────────────────
-#  M1: COHERENCIA TRANSMODAL
-# ─────────────────────────────────────────────
-
-def calculate_M1(G_Escrito: nx.Graph, G_TutorVirtual: nx.Graph, nlp) -> float | None:
+def _graph_embedding(G: nx.Graph) -> np.ndarray | None:
     """
-    Calcula M1 (Coherencia Transmodal) usando Similitud Coseno.
-    Compara la red de conceptos del documento escrito contra la del chat.
-    
+    Genera el vector semántico (768 dims) para un grafo de conceptos.
+
+    Pipeline: grafo → texto (nodos + relaciones) → embedding
+    Modelo: paraphrase-multilingual-mpnet-base-v2
+    """
+    text = _graph_to_text(G)
+    if not text:
+        return None
+    return _encode_text(text)
+
+
+def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
+    """Similitud coseno entre dos vectores. Retorna valor en [0.0, 1.0]."""
+    dot_product = np.dot(vec_a, vec_b)
+    norm_a = np.linalg.norm(vec_a)
+    norm_b = np.linalg.norm(vec_b)
+
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+
+    sim = dot_product / (norm_a * norm_b)
+    return float(np.clip(sim, 0.0, 1.0))
+
+
+# ─────────────────────────────────────────────
+#  M1: COHERENCIA DIALÓGICA (por sesión)
+# ─────────────────────────────────────────────
+
+def calculate_M1(G_writing: nx.Graph, G_tutor: nx.Graph, nlp=None) -> float | None:
+    """
+    Calcula M1 (Coherencia Dialógica) para una sesión.
+
+    M1 = cos(V_W, V_T) = (V_W · V_T) / (|V_W| × |V_T|)
+
+    Compara el grafo del texto escrito del estudiante (Tab 1, 2 o 3)
+    contra el grafo de la conversación con el tutor virtual en esa sesión.
+
     Args:
-        G_Escrito (nx.Graph): Grafo generado a partir del borrador del estudiante.
-        G_TutorVirtual (nx.Graph): Grafo generado de la interacción limpia con el bot.
-        nlp: Modelo spaCy cargado.
-        
+        G_writing:  Grafo generado del texto escrito del estudiante.
+        G_tutor:    Grafo generado de la interacción con el tutor virtual.
+        nlp:        DEPRECADO — se mantiene por compatibilidad. Se ignora.
+                    El embedding ahora usa sentence-transformers.
+
     Returns:
         float: Similitud coseno [0.0 - 1.0], o None si falta información.
     """
-    vec_escrito = _graph_embedding(G_Escrito, nlp)
-    vec_tutor = _graph_embedding(G_TutorVirtual, nlp)
+    if nlp is not None:
+        logger.debug("calculate_M1: param 'nlp' es deprecado y se ignora. "
+                      "Se usa sentence-transformers.")
 
-    if vec_escrito is None or vec_tutor is None:
-        logger.warning("No se pudo calcular M1: uno de los grafos está vacío o sin vectores.")
+    vec_w = _graph_embedding(G_writing)
+    vec_t = _graph_embedding(G_tutor)
+
+    if vec_w is None or vec_t is None:
+        logger.warning("M1: No se pudo calcular — grafo vacío o modelo no disponible.")
         return None
 
-    # Similitud coseno: (A · B) / (||A|| * ||B||)
-    dot_product = np.dot(vec_escrito, vec_tutor)
-    norm_escrito = np.linalg.norm(vec_escrito)
-    norm_tutor = np.linalg.norm(vec_tutor)
+    return _cosine_similarity(vec_w, vec_t)
 
-    if norm_escrito == 0 or norm_tutor == 0:
-        return 0.0
-
-    sim = dot_product / (norm_escrito * norm_tutor)
-    
-    # Clip para evitar errores de precisión de punto flotante fuera de [-1, 1]
-    return float(np.clip(sim, -1.0, 1.0))
 
 def interpret_M1(m1_score: float) -> dict:
     """
-    Interpreta el valor M1 según los umbrales del piloto UNIFE 2026.
-    Retorna nivel de coherencia y color para la UI.
+    Interpreta M1 según los 5 niveles del Doc3_Metodo_v2.
+
+    0.80–1.00: Alta — el texto integra muy bien el andamiaje del tutor.
+    0.60–0.79: Moderada-alta — buena integración, mayoría de conceptos presentes.
+    0.40–0.59: Moderada — integración parcial.
+    0.20–0.39: Baja — brecha notable entre escritura y diálogo.
+    0.00–0.19: Sin coherencia — el texto no refleja lo trabajado con el tutor.
     """
     if m1_score is None:
-        return {"level": "Sin datos", "color": "gray", "message": "Requiere interacción con el Tutor Virtual."}
-    
+        return {
+            "level": "Sin datos",
+            "color": "gray",
+            "message": "Requiere interacción con el Tutor Virtual."
+        }
+
     if m1_score >= 0.80:
-        return {"level": "Alta", "color": "green", "message": "Excelente coherencia terminológica entre redacción y diálogo."}
+        return {
+            "level": "Alta",
+            "color": "green",
+            "message": "El texto integra muy bien el andamiaje del tutor. "
+                       "Alta fidelidad conceptual."
+        }
     elif m1_score >= 0.60:
-        return {"level": "Moderada", "color": "orange", "message": "Coherencia aceptable. Revisar si hay conceptos desconectados."}
+        return {
+            "level": "Moderada-alta",
+            "color": "lightgreen",
+            "message": "Buena integración. La mayoría de conceptos del tutor "
+                       "aparecen en la escritura."
+        }
+    elif m1_score >= 0.40:
+        return {
+            "level": "Moderada",
+            "color": "orange",
+            "message": "Integración parcial. Algunos conceptos del tutor "
+                       "no llegan al texto."
+        }
+    elif m1_score >= 0.20:
+        return {
+            "level": "Baja",
+            "color": "red",
+            "message": "Brecha notable entre lo conversado con el tutor "
+                       "y lo escrito."
+        }
     else:
-        return {"level": "Baja", "color": "red", "message": "Riesgo reproductivo. El estudiante no verbaliza los conceptos que escribe."}
+        return {
+            "level": "Sin coherencia",
+            "color": "darkred",
+            "message": "El texto no refleja lo trabajado con el tutor."
+        }
 
 
 # ─────────────────────────────────────────────
-#  M2: ROBUSTEZ ESTRUCTURAL
+#  M2: ROBUSTEZ ESTRUCTURAL (por punto de medición)
 # ─────────────────────────────────────────────
 
-def calculate_M2(G: nx.Graph) -> dict:
+def calculate_M2(G: nx.Graph, topic: str = None) -> dict:
     """
-    Calcula métricas de robustez estructural (M2) de un grafo de conceptos.
-    Válido tanto para el grafo escrito como para el grafo del tutor virtual.
+    Calcula las tres métricas de Robustez Estructural (M2)
+    para un punto de medición específico.
+
+    Las tres métricas son complementarias:
+    - density: qué tan articulado es el argumento.
+    - topic_alignment: qué tan centrado está en el tema asignado.
+    - depth: cuántos niveles jerárquicos tiene el razonamiento.
+
+    Args:
+        G:     Grafo de conceptos del texto escrito.
+        topic: Tema central asignado (para topic_alignment). Opcional.
+
+    Returns:
+        dict con density, topic_alignment, depth, node_count, edge_count.
     """
     if not G or G.number_of_nodes() == 0:
         return {
-            "M2_density": 0.0,
-            "M2_average_degree": 0.0,
-            "M2_node_count": 0,
-            "M2_edge_count": 0
+            "density": 0.0,
+            "topic_alignment": None,
+            "depth": 0,
+            "node_count": 0,
+            "edge_count": 0
         }
 
     nodes = G.number_of_nodes()
     edges = G.number_of_edges()
-    
-    # Densidad: relación entre aristas reales y aristas posibles
+
+    # 1. Densidad: aristas / (nodos × (nodos-1))
+    #    Rango: 0.0 – 1.0
+    #    Densidad creciente = argumento progresivamente más articulado.
     density = nx.density(G)
-    
-    # Grado promedio: promedio de conexiones por concepto (sustantivo)
-    degrees = dict(G.degree())
-    avg_degree = sum(degrees.values()) / nodes if nodes > 0 else 0.0
+
+    # 2. Alineación temática: cos(vector_grafo, vector_tema)
+    #    Rango: 0.0 – 1.0
+    #    Mide qué tan centrado está el texto en el tema asignado.
+    topic_alignment = _calculate_topic_alignment(G, topic)
+
+    # 3. Profundidad argumentativa: cadena más larga del grafo
+    #    Ejemplo: A→B→C→D = profundidad 3
+    #    Diferencia texto descriptivo (depth=1) de analítico (depth≥3).
+    depth = _calculate_depth(G)
 
     return {
-        "M2_density": round(density, 4),
-        "M2_average_degree": round(avg_degree, 2),
-        "M2_node_count": nodes,
-        "M2_edge_count": edges
+        "density": round(density, 4),
+        "topic_alignment": round(topic_alignment, 4) if topic_alignment is not None else None,
+        "depth": depth,
+        "node_count": nodes,
+        "edge_count": edges
     }
 
-def interpret_M2_evolution(m2_current: dict, m2_previous: dict) -> dict:
+
+def _calculate_topic_alignment(G: nx.Graph, topic: str = None) -> float | None:
     """
-    Compara dos estados de M2 para evaluar el progreso longitudinal del tesista.
+    Alineación temática: cos(grafo, vector_tema).
+
+    Mide semánticamente qué tan centrado está el texto en el tema central
+    asignado por la profesora asesora.
+
+    Retorna None si no se proporcionó tema o si el modelo no está disponible.
     """
-    if not m2_previous or m2_previous.get("M2_node_count", 0) == 0:
+    if topic is None or not topic.strip():
+        return None
+
+    graph_text = _graph_to_text(G)
+    if not graph_text:
+        return None
+
+    vec_graph = _encode_text(graph_text)
+    vec_topic = _encode_text(topic)
+
+    if vec_graph is None or vec_topic is None:
+        return None
+
+    return _cosine_similarity(vec_graph, vec_topic)
+
+
+def _calculate_depth(G: nx.Graph) -> int:
+    """
+    Profundidad argumentativa: nivel máximo de la cadena argumentativa
+    más larga del grafo.
+
+    Para un grafo de co-ocurrencia (no dirigido), usamos el diámetro
+    de la componente conexa más grande (longest shortest path).
+
+    Ejemplo: A-B-C-D = profundidad 3 (tres niveles de conexión).
+    Profundidad 1 = solo afirmaciones.
+    Profundidad 3+ = argumentos apoyados por sub-argumentos.
+    """
+    if G.number_of_nodes() <= 1:
+        return 0
+    if G.number_of_edges() == 0:
+        return 0
+
+    try:
+        if nx.is_connected(G):
+            return nx.diameter(G)
+        else:
+            # Usar la componente conexa más grande
+            largest_cc = max(nx.connected_components(G), key=len)
+            subgraph = G.subgraph(largest_cc)
+            if subgraph.number_of_nodes() <= 1:
+                return 0
+            return nx.diameter(subgraph)
+    except Exception as e:
+        logger.error(f"Error calculando profundidad argumentativa: {e}")
+        return 0
+
+
+def interpret_M2_evolution(current: dict, previous: dict) -> dict:
+    """
+    Compara dos puntos de medición M2 para evaluar progreso longitudinal
+    del tesista a lo largo del semestre.
+
+    Evalúa delta en las tres métricas: density, topic_alignment, depth.
+    """
+    if not previous or previous.get("node_count", 0) == 0:
         return {"status": "baseline", "message": "Primera medición registrada."}
 
-    delta_density = m2_current["M2_density"] - m2_previous["M2_density"]
-    delta_degree = m2_current["M2_average_degree"] - m2_previous["M2_average_degree"]
+    delta_density = current.get("density", 0) - previous.get("density", 0)
+    delta_depth = current.get("depth", 0) - previous.get("depth", 0)
 
-    if delta_degree > 0.5:
+    signals = []
+
+    # Densidad
+    if delta_density > 0.03:
+        signals.append("densidad creciente")
+    elif delta_density < -0.03:
+        signals.append("densidad decreciente")
+
+    # Profundidad
+    if delta_depth > 0:
+        signals.append("profundidad creciente")
+    elif delta_depth < 0:
+        signals.append("profundidad decreciente")
+
+    # Alineación temática (si disponible en ambos puntos)
+    delta_topic = None
+    curr_ta = current.get("topic_alignment")
+    prev_ta = previous.get("topic_alignment")
+    if curr_ta is not None and prev_ta is not None:
+        delta_topic = curr_ta - prev_ta
+        if delta_topic > 0.05:
+            signals.append("mejor enfoque temático")
+        elif delta_topic < -0.05:
+            signals.append("menor enfoque temático")
+
+    # Clasificación general
+    positive = sum(1 for s in signals if "creciente" in s or "mejor" in s)
+    negative = sum(1 for s in signals if "decreciente" in s or "menor" in s)
+
+    if positive > negative:
         level = "crecimiento"
-        message = "La red conceptual se está enriqueciendo. Mayor articulación de ideas."
-    elif delta_degree < -0.5:
-        level = "simplificación"
-        message = "Pérdida de conexiones. El estudiante podría estar fragmentando el tema."
-    elif delta_density > 0.05:
-        level = "consolidación"
-        message = "Mismos conceptos, pero más integrados entre sí."
-    elif delta_density < -0.05:
-        level = "dispersión"
-        message = "Se añadieron conceptos nuevos pero sin relacionarlos con los anteriores."
+        message = "Robustez estructural en crecimiento: " + ", ".join(signals) + "."
+    elif negative > positive:
+        level = "regresión"
+        message = "Posible regresión estructural: " + ", ".join(signals) + "."
     else:
-        level = "estático"
+        level = "estable"
         message = "Sin cambios significativos en la estructura del conocimiento."
 
     return {
-        "delta_density": delta_density,
-        "delta_degree": delta_degree,
         "level": level,
+        "delta_density": round(delta_density, 4),
+        "delta_depth": delta_depth,
+        "delta_topic_alignment": round(delta_topic, 4) if delta_topic is not None else None,
+        "signals": signals,
         "message": message
     }
 
 
 # ─────────────────────────────────────────────
-#  SERIALIZACIÓN  (para guardar en DocumentDB)
+#  SERIALIZACIÓN (para guardar en DocumentDB)
 # ─────────────────────────────────────────────
 
 def graph_to_dict(G: nx.Graph) -> dict:
@@ -210,16 +427,15 @@ def graph_to_dict(G: nx.Graph) -> dict:
         **m2,
     }
 
+
 def dict_to_graph(d: dict) -> nx.Graph:
     """
     Reconstruye un nx.Graph desde el dict almacenado en DocumentDB.
-    Útil para recalcular M1 sobre análisis históricos al cargar el Dashboard.
+    Útil para recalcular M1 sobre análisis históricos.
     """
     G = nx.Graph()
     for node in d.get("nodes", []):
         G.add_node(node["id"], weight=node.get("weight", 1))
-    
     for edge in d.get("edges", []):
         G.add_edge(edge["source"], edge["target"], weight=edge.get("weight", 1))
-        
     return G
