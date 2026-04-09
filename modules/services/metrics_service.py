@@ -23,23 +23,27 @@ class MetricsService:
     Stateless.
     """
 
-    # ─── M1: COHERENCIA TRANSMODAL ────────────────────────────────────────────
+    # ─── M1: COHERENCIA DIALÓGICA ────────────────────────────────────────────
 
     def calculate_m1(
         self,
         graph_written: Optional[nx.Graph],
         graph_chat: Optional[nx.Graph],
-        nlp,
+        nlp=None,
     ) -> float:
         """
         M1 = similitud coseno entre el grafo de escritura y el grafo del chat.
+        Usa sentence-transformers (paraphrase-multilingual-mpnet-base-v2).
         Retorna 0.0 si falta alguno de los dos grafos.
+
+        Args:
+            nlp: DEPRECADO — se mantiene por compatibilidad, se ignora.
         """
         if graph_written is None or graph_chat is None:
             return 0.0
         try:
             from modules.metrics.m1_m2 import calculate_M1
-            result = calculate_M1(graph_written, graph_chat, nlp)
+            result = calculate_M1(graph_written, graph_chat)
             return float(result) if result is not None else 0.0
         except Exception as exc:
             logger.warning(f"[MetricsService.calculate_m1] {exc}")
@@ -49,16 +53,16 @@ class MetricsService:
 
     def calculate_m2(self, graph: Optional[nx.Graph]) -> dict:
         """
-        M2 = densidad + grado promedio del grafo de conceptos.
+        M2 = density + topic_alignment + depth del grafo de conceptos.
         """
         if graph is None:
-            return {'M2_density': 0.0, 'M2_average_degree': 0.0, 'M2_node_count': 0}
+            return {'density': 0.0, 'topic_alignment': None, 'depth': 0, 'node_count': 0, 'edge_count': 0}
         try:
             from modules.metrics.m1_m2 import calculate_M2
             return calculate_M2(graph)
         except Exception as exc:
             logger.warning(f"[MetricsService.calculate_m2] {exc}")
-            return {'M2_density': 0.0, 'M2_average_degree': 0.0, 'M2_node_count': 0}
+            return {'density': 0.0, 'topic_alignment': None, 'depth': 0, 'node_count': 0, 'edge_count': 0}
 
     # ─── M1_D: COHERENCIA DIALÓGICA CROSS-CUBETA ─────────────────────────────
 
@@ -169,6 +173,7 @@ class MetricsService:
             res = doc.get('analysis_result') or {}
             val = (
                 res.get('m2_score')
+                or (res.get('concept_graph') or {}).get('density')
                 or (res.get('concept_graph') or {}).get('M2_density')
                 or doc.get('m2_score', 0.0)
             )

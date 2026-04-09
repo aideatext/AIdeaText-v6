@@ -140,6 +140,7 @@ class StudentService:
         m1 = float(res.get('m1_score', 0.0))
         m2 = float(
             res.get('m2_score')
+            or (res.get('concept_graph') or {}).get('density')
             or (res.get('concept_graph') or {}).get('M2_density', 0.0)
             or latest.get('m2_score', 0.0)
         )

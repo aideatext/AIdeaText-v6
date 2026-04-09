@@ -214,7 +214,7 @@ class AnalysisService:
         try:
             from modules.metrics.m1_m2 import calculate_M2
             m2 = calculate_M2(G)
-            return m2, float(m2.get('M2_density', 0.0))
+            return m2, float(m2.get('density', 0.0))
         except Exception as exc:
             logger.warning(f"[AnalysisService._compute_m2] {exc}")
             return {}, 0.0

@@ -38,7 +38,12 @@ def process_semantic_data(raw_data):
         m1 = float(res.get('m1_score', 0.0))
         m2 = 0.0
         if isinstance(res, dict):
-            m2 = res.get('m2_score') or res.get('concept_graph', {}).get('M2_density', 0.0)
+            # Compatibilidad: nuevas claves (density) y legacy (M2_density, m2_score)
+            m2 = (
+                res.get('m2_score')
+                or res.get('concept_graph', {}).get('density')
+                or res.get('concept_graph', {}).get('M2_density', 0.0)
+            )
 
         processed.append({
             'Estudiante_ID': id_estudiante,      # "t1"

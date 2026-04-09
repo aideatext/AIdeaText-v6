@@ -188,8 +188,8 @@ def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
                 .get('concept_graph_nx')
             )
 
-            # Métricas
-            m1_val = calculate_M1(g_tesis, g_interaccion, nlp_model) if g_tesis else None
+            # Métricas (sentence-transformers, ya no requiere nlp_model)
+            m1_val = calculate_M1(g_tesis, g_interaccion) if g_tesis else None
             m2_data = calculate_M2(g_interaccion)
             m1_interp = interpret_M1(m1_val if m1_val is not None else 0.0)
 
@@ -204,8 +204,9 @@ def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
                     'graph_user': graph_user_bytes,     # G_u solo estudiante
                     'graph_tutor': graph_tutor_bytes,   # G_t solo tutor
                     'm1_score': float(m1_val) if m1_val is not None else 0.0,
-                    'm2_score': m2_data.get('M2_density', 0.0),
-                    'avg_degree': m2_data.get('M2_average_degree', 0.0),
+                    'm2_score': m2_data.get('density', 0.0),
+                    'depth': m2_data.get('depth', 0),
+                    'topic_alignment': m2_data.get('topic_alignment'),
                 },
                 lang_code=lang_code,
             )
@@ -223,7 +224,8 @@ def _compute_and_save_checkpoint(lang_code: str, chatbot_t: dict):
             st.session_state['chat_has_unsaved'] = False
 
             logger.info(
-                f"[checkpoint] M1={m1_val} M2={m2_data.get('M2_density')} "
+                f"[checkpoint] M1={m1_val} density={m2_data.get('density')} "
+                f"depth={m2_data.get('depth')} "
                 f"turns={st.session_state['last_checkpoint']['n_turns']}"
             )
             st.rerun()
@@ -262,11 +264,11 @@ def _display_checkpoint_result(cp: dict, chatbot_t: dict):
             help=interp.get('message', ''),
         )
 
-    # M2
+    # M2 — Robustez Estructural
     m2 = cp.get('m2_data', {})
     col1, col2 = st.columns(2)
-    col1.metric("M2 Densidad", f"{m2.get('M2_density', 0.0):.3f}")
-    col2.metric("Grado Prom.", f"{m2.get('M2_average_degree', 0.0):.1f}")
+    col1.metric("Densidad", f"{m2.get('density', 0.0):.3f}")
+    col2.metric("Profundidad", f"{m2.get('depth', 0)}")
 
     st.caption(
         chatbot_t.get('checkpoint_saved', f"✅ Guardado · {cp.get('n_turns', 0)} turnos")
